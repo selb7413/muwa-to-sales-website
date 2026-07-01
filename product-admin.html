@@ -1,0 +1,1448 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MUWA 商品管理後台</title>
+    <style>
+      :root {
+        --cream: #f8f0e4;
+        --paper: #fffaf0;
+        --ink: #252320;
+        --muted: #635e56;
+        --orange: #d8782f;
+        --blue: #6f8390;
+        --tan: #f0dfc3;
+        --teal: #879a94;
+        --shadow: 8px 8px 0 var(--ink);
+        --radius: 8px;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-width: 320px;
+        background:
+          radial-gradient(circle at 14px 14px, rgba(37, 35, 32, .08) 0 2px, transparent 2.5px) 0 0 / 28px 28px,
+          linear-gradient(180deg, #fbf4e8 0%, #fffaf0 44%, #f0dfc3 100%);
+        color: var(--ink);
+        font-family: "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+      }
+
+      button, input, select, textarea { font: inherit; }
+      button { cursor: pointer; }
+      .hidden { display: none !important; }
+
+      .login-screen {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      .login-card,
+      .admin-bar,
+      .editor-panel,
+      .preview-card,
+      .product-card,
+      .detail-panel,
+      .list-panel {
+        background: var(--paper);
+        border: 4px solid var(--ink);
+        border-radius: 14px;
+        box-shadow: var(--shadow);
+      }
+
+      .login-card {
+        width: min(440px, 100%);
+        padding: 28px;
+      }
+
+      h1, h2, h3, p { margin-top: 0; }
+      h1 { margin-bottom: 10px; font-size: clamp(34px, 5vw, 58px); line-height: 1.05; }
+      h2 { margin-bottom: 14px; font-size: clamp(28px, 3vw, 42px); }
+      h3 { margin-bottom: 8px; font-size: 22px; }
+      p { color: var(--muted); line-height: 1.7; font-weight: 650; }
+
+      label { display: grid; gap: 8px; margin-bottom: 14px; color: var(--muted); font-size: 14px; font-weight: 950; }
+      input, select, textarea {
+        width: 100%;
+        min-height: 48px;
+        padding: 10px 12px;
+        background: #fffaf0;
+        border: 3px solid var(--ink);
+        border-radius: var(--radius);
+        color: var(--ink);
+        font-weight: 850;
+      }
+      textarea { min-height: 108px; resize: vertical; line-height: 1.6; }
+      input[type="file"] { background: var(--tan); }
+      input[type="range"] { padding: 0; accent-color: var(--orange); }
+      .field-note {
+        margin: -6px 0 14px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 800;
+        line-height: 1.6;
+      }
+      .purchase-editor {
+        display: grid;
+        gap: 10px;
+        margin: 0 0 14px;
+      }
+      .purchase-editor-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(110px, .55fr) auto;
+        gap: 10px;
+        align-items: end;
+        padding: 12px;
+        background: #fff3df;
+        border: 3px solid var(--ink);
+        border-radius: var(--radius);
+      }
+      .purchase-editor-row label { margin: 0; }
+      .purchase-editor-row input { min-height: 42px; }
+      .addon-editor {
+        grid-column: 1 / -1;
+        display: grid;
+        gap: 8px;
+        padding: 10px;
+        background: #fffaf0;
+        border: 2px dashed rgba(37, 35, 32, .45);
+        border-radius: var(--radius);
+      }
+      .addon-editor-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .addon-editor-head strong {
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 950;
+      }
+      .addon-editor-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(100px, .5fr) auto;
+        gap: 8px;
+        align-items: end;
+      }
+      .addon-editor-row label { margin: 0; }
+
+      .button {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 18px;
+        border: 3px solid var(--ink);
+        border-radius: var(--radius);
+        background: var(--orange);
+        color: #fff;
+        font-weight: 950;
+        box-shadow: 5px 5px 0 var(--ink);
+      }
+      .button.secondary { background: var(--paper); color: var(--ink); }
+      .button.blue { background: var(--blue); }
+      .button.small { min-height: 38px; padding: 0 12px; font-size: 14px; }
+
+      .admin-shell { padding-bottom: 64px; }
+      .admin-bar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin: 18px clamp(16px, 4vw, 56px);
+        padding: 14px;
+      }
+      .admin-bar strong { font-size: 22px; }
+      .admin-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+      .site-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 12px clamp(18px, 5vw, 72px);
+        background: rgba(255, 250, 240, .92);
+        border-top: 3px solid var(--ink);
+        border-bottom: 3px solid var(--ink);
+      }
+      .brand-logo { width: 58px; height: 58px; border-radius: 50%; object-fit: contain; }
+      .nav-links { display: flex; flex-wrap: wrap; gap: 12px; font-size: 14px; font-weight: 950; }
+      .nav-links a {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        padding: 0 18px;
+        background: var(--orange);
+        border: 3px solid var(--ink);
+        border-radius: var(--radius);
+        box-shadow: 5px 5px 0 var(--ink);
+      }
+
+      section { padding: 64px clamp(18px, 5vw, 72px); }
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, .9fr) minmax(360px, 1.1fr);
+        gap: clamp(28px, 4vw, 64px);
+        align-items: center;
+        background:
+          linear-gradient(90deg, rgba(240, 223, 195, .82) 0 28%, transparent 28%),
+          radial-gradient(circle at 82% 18%, rgba(111, 131, 144, .18), transparent 26%);
+      }
+      .quiet-line, .section-kicker, .product-copy .category {
+        display: inline-block;
+        margin: 0 0 14px;
+        padding: 7px 10px;
+        background: var(--blue);
+        border: 3px solid var(--ink);
+        color: #fff;
+        font-size: 14px;
+        font-weight: 950;
+        box-shadow: 4px 4px 0 var(--ink);
+      }
+      .hero-lede { font-size: clamp(18px, 2vw, 25px); line-height: 1.65; font-weight: 750; }
+      .hero-scene img {
+        width: 100%;
+        min-height: 380px;
+        max-height: 580px;
+        object-fit: cover;
+        border: 4px solid var(--ink);
+        border-radius: 18px;
+        box-shadow: 12px 12px 0 var(--ink);
+      }
+
+      .product-section { background: radial-gradient(circle at 18px 18px, rgba(37,35,32,.09) 0 2px, transparent 2.5px) 0 0 / 24px 24px, #f3e4cd; }
+      .product-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 18px;
+        max-width: 1160px;
+        margin: 0 auto;
+      }
+      .product-card { overflow: hidden; }
+      .product-visual {
+        position: relative;
+        aspect-ratio: 1.15 / 1;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        background: var(--tan);
+        border-bottom: 4px solid var(--ink);
+      }
+      .image-frame {
+        width: 100%;
+        height: 100%;
+        background-image: var(--image-url);
+        background-position: var(--image-position, 50% 50%);
+        background-size: var(--image-size, 100% auto);
+        background-repeat: no-repeat;
+      }
+      .product-placeholder { color: var(--muted); font-size: 28px; font-weight: 950; }
+      .product-copy { padding: 20px; }
+      .product-copy .category { background: var(--tan); color: var(--ink); }
+      .price-pill {
+        display: inline-flex;
+        margin-top: 16px;
+        padding: 6px 10px;
+        background: var(--ink);
+        color: #fff;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 950;
+      }
+
+      .editor-panel {
+        width: min(1248px, calc(100% - 32px));
+        margin: 28px auto;
+        padding: 24px;
+      }
+      .editor-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 28px;
+        align-items: start;
+      }
+      .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .image-controls {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 14px;
+      }
+      .preview-stack {
+        display: grid;
+        gap: 22px;
+      }
+      .preview-card { padding: 16px; }
+      .preview-card .product-card {
+        width: min(520px, 100%);
+        box-shadow: none;
+      }
+
+      .thumb-strip {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .thumb-strip button {
+        aspect-ratio: 1;
+        padding: 0;
+        overflow: hidden;
+        background: var(--paper);
+        border: 3px solid var(--ink);
+        border-radius: var(--radius);
+      }
+      .thumb-strip img { width: 100%; height: 100%; object-fit: cover; }
+      .image-picked {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        margin: -2px 0 14px;
+      }
+      .image-picked div {
+        position: relative;
+        min-height: 86px;
+        overflow: hidden;
+        background: var(--tan);
+        border: 3px solid var(--ink);
+        border-radius: var(--radius);
+        cursor: pointer;
+      }
+      .image-picked div.is-active {
+        border-color: var(--orange);
+        box-shadow: 4px 4px 0 var(--ink);
+      }
+      .image-picked img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .image-picked button {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 28px;
+        height: 28px;
+        border: 2px solid var(--ink);
+        border-radius: 50%;
+        background: var(--orange);
+        color: #fff;
+        font-weight: 950;
+      }
+      .drag-hint {
+        display: inline-flex;
+        margin: 0 0 10px;
+        padding: 7px 10px;
+        background: #fff3df;
+        border: 3px solid var(--ink);
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 950;
+        box-shadow: 4px 4px 0 var(--ink);
+      }
+      .detail-preview-head {
+        display: grid;
+        grid-template-columns: auto minmax(220px, 1fr);
+        gap: 18px;
+        align-items: center;
+        grid-column: 1 / -1;
+      }
+      .preview-scale-control {
+        display: grid;
+        grid-template-columns: auto minmax(160px, 1fr);
+        gap: 10px;
+        align-items: center;
+        margin: 0 0 10px;
+        padding: 7px 10px;
+        background: #fff3df;
+        border: 3px solid var(--ink);
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 950;
+        box-shadow: 4px 4px 0 var(--blue);
+      }
+      .preview-scale-control input {
+        min-height: 26px;
+        padding: 0;
+      }
+      .preview-save-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        justify-content: center;
+        padding-top: 6px;
+      }
+      .save-status-pill {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        padding: 0 14px;
+        background: #fff3df;
+        border: 3px solid var(--ink);
+        border-radius: var(--radius);
+        box-shadow: 4px 4px 0 var(--blue);
+      }
+      .drag-target {
+        cursor: grab;
+        touch-action: none;
+        user-select: none;
+      }
+      .drag-target.is-dragging {
+        cursor: grabbing;
+      }
+      .drag-target::after {
+        content: "按住拖曳調整位置";
+        position: absolute;
+        right: 10px;
+        bottom: 10px;
+        padding: 6px 8px;
+        background: rgba(255, 250, 240, .92);
+        border: 2px solid var(--ink);
+        border-radius: 999px;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 950;
+      }
+
+      .detail-panel {
+        display: grid;
+        grid-template-columns: minmax(320px, 1fr) minmax(320px, .82fr);
+        gap: 32px;
+        width: min(1180px, calc(100% + 4px));
+        margin: 0 auto;
+        padding: clamp(20px, 3vw, 36px);
+        overflow: hidden;
+      }
+      .detail-panel > div { min-width: 0; }
+      .detail-main {
+        position: relative;
+        aspect-ratio: 1.45 / 1;
+        min-height: 0;
+        width: 100%;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        background: var(--tan);
+        border: 4px solid var(--ink);
+        border-radius: var(--radius);
+      }
+      .detail-main .image-frame { width: 100%; height: 100%; }
+      .quantity-control {
+        display: grid;
+        grid-template-columns: 52px 1fr 52px;
+        margin: 16px 0;
+        border: 3px solid var(--ink);
+      }
+      .quantity-control span, .quantity-control button { min-height: 48px; display: grid; place-items: center; border: 0; background: var(--paper); font-weight: 950; }
+      .quantity-control span { border-right: 3px solid var(--ink); border-left: 3px solid var(--ink); }
+      .purchase-options {
+        display: grid;
+        gap: 10px;
+        margin: 14px 0;
+      }
+      .purchase-option-row {
+        display: grid;
+        gap: 8px;
+        padding: 10px;
+        background: #fffaf0;
+        border: 3px solid var(--ink);
+        border-radius: var(--radius);
+      }
+      .purchase-line {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        gap: 8px;
+        align-items: center;
+      }
+      .purchase-option-name {
+        min-height: 50px;
+        display: grid;
+        justify-items: start;
+        gap: 2px;
+        padding: 8px 10px;
+        background: var(--paper);
+        border: 3px solid var(--ink);
+        border-radius: var(--radius);
+        color: var(--ink);
+        font-weight: 950;
+        text-align: left;
+      }
+      .purchase-option-name small { color: var(--muted); font-size: 12px; font-weight: 950; }
+      .option-qty {
+        display: grid;
+        grid-template-columns: 38px 46px 38px;
+        border: 3px solid var(--ink);
+      }
+      .option-qty span, .option-qty button { min-height: 38px; display: grid; place-items: center; border: 0; background: var(--paper); font-weight: 950; }
+      .option-qty span { border-right: 3px solid var(--ink); border-left: 3px solid var(--ink); }
+      .purchase-subtotal { white-space: nowrap; font-weight: 950; }
+      .addon-options {
+        display: grid;
+        gap: 8px;
+        padding: 10px;
+        background: #fff3df;
+        border: 2px dashed rgba(37, 35, 32, .45);
+        border-radius: var(--radius);
+      }
+      .addon-options > p { margin: 0; color: var(--muted); font-size: 13px; font-weight: 950; }
+      .addon-option-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        gap: 8px;
+        align-items: center;
+      }
+      .addon-option-row span { color: var(--ink); font-size: 14px; font-weight: 900; }
+      .addon-option-row strong { white-space: nowrap; font-size: 13px; }
+      .addon-qty { grid-template-columns: 30px 36px 30px; }
+      .purchase-total {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        margin: 12px 0 14px;
+        padding: 12px 14px;
+        background: #fff3df;
+        border-left: 6px solid var(--orange);
+        font-size: 20px;
+        font-weight: 950;
+      }
+      .tabs {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-column: 1 / -1;
+        border-bottom: 3px solid var(--ink);
+      }
+      .tabs button { min-height: 50px; border: 0; background: transparent; color: var(--muted); font-weight: 950; }
+      .tabs button.is-active { color: var(--ink); box-shadow: inset 0 -5px 0 var(--orange); }
+      .tab-panel { grid-column: 1 / -1; text-align: center; font-weight: 750; line-height: 1.8; }
+      .rich-text-preview p,
+      .tab-panel p {
+        margin: 0 auto 10px;
+        color: var(--muted);
+        font-weight: 750;
+        line-height: 1.85;
+      }
+
+      .list-panel {
+        width: min(1180px, calc(100% - 32px));
+        margin: 28px auto;
+        padding: 22px;
+      }
+      .list { display: grid; gap: 12px; }
+      .item {
+        display: grid;
+        grid-template-columns: 88px minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: center;
+        padding: 12px;
+        background: var(--tan);
+        border: 3px solid var(--ink);
+        border-radius: var(--radius);
+      }
+      .item img, .thumb {
+        width: 88px;
+        height: 88px;
+        object-fit: cover;
+        border: 3px solid var(--ink);
+        border-radius: var(--radius);
+        background: var(--paper);
+      }
+      .thumb { display: grid; place-items: center; color: var(--muted); font-weight: 950; }
+      .item h3, .item p { margin: 0; }
+      .item-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+
+      .message { min-height: 28px; color: #536a63; font-weight: 950; }
+      .message.is-saving { color: var(--orange); }
+      .message.is-success { color: #536a63; }
+      .message.is-error { color: #b8322b; }
+      [contenteditable="true"] { outline: 3px dashed rgba(216, 120, 47, .45); outline-offset: 4px; border-radius: 4px; }
+
+      @media (max-width: 980px) {
+        .hero, .editor-grid, .detail-panel { grid-template-columns: 1fr; }
+        .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+      @media (max-width: 640px) {
+        .admin-bar, .site-header { align-items: flex-start; flex-direction: column; }
+        .product-grid { grid-template-columns: 1fr; }
+        .field-row, .image-controls, .tabs, .purchase-editor-row, .addon-editor-row, .purchase-line, .addon-option-row { grid-template-columns: 1fr; }
+        .item { grid-template-columns: 72px minmax(0, 1fr); }
+        .item button { grid-column: 1 / -1; }
+      }
+    </style>
+  </head>
+  <body>
+    <section class="login-screen" id="loginScreen">
+      <form class="login-card" id="loginForm">
+        <p class="section-kicker">管理者登入</p>
+        <h1>MUWA 後台</h1>
+        <p>登入後可以用接近前台的畫面新增商品，邊填邊看商品會怎麼呈現。</p>
+        <label>帳號 <input name="adminUser" autocomplete="username" required /></label>
+        <label>密碼 <input name="adminKey" type="password" autocomplete="current-password" required /></label>
+        <button class="button" type="submit">登入管理者模式</button>
+        <p class="message" id="loginMessage"></p>
+      </form>
+    </section>
+
+    <main class="admin-shell hidden" id="adminShell">
+      <div class="admin-bar">
+        <strong>MUWA 管理者模式</strong>
+        <div class="admin-actions">
+          <button class="button" type="button" id="addProduct">新增商品</button>
+          <button class="button secondary" type="button" id="refreshProducts">重新整理商品</button>
+          <button class="button blue" type="button" id="logout">登出</button>
+        </div>
+      </div>
+
+      <header class="site-header">
+        <img class="brand-logo" src="https://drive.google.com/thumbnail?id=1" alt="MUWA" />
+        <nav class="nav-links" aria-label="頁面區塊">
+          <a href="#products">商品</a>
+          <a href="#wishlist">許願池</a>
+          <a href="#about">關於我們</a>
+        </nav>
+      </header>
+
+      <section class="hero">
+        <div>
+          <p class="quiet-line" contenteditable="true">不是每個商品，都能變成自己的日常。</p>
+          <h1 contenteditable="true">不只是商品，<br />是有你參與的日常。</h1>
+          <p class="hero-lede" contenteditable="true">MUWA 希望身邊使用的東西，不只是買來的物品，而是能多一點自己的偏好、個性與故事。</p>
+          <button class="button" type="button" id="jumpProducts">看看已上架商品</button>
+        </div>
+        <div class="hero-scene">
+          <div class="product-placeholder">前台主視覺</div>
+        </div>
+      </section>
+
+      <section class="editor-panel hidden" id="editorPanel">
+        <div class="editor-grid">
+          <form id="productForm">
+            <p class="section-kicker">新增商品</p>
+            <h2>直接填，右邊即時預覽</h2>
+            <div class="field-row">
+              <label>商品名稱 <input name="name" required placeholder="例如：毛毛寶盒" /></label>
+              <label>分類 <input name="category" value="全部" /></label>
+            </div>
+            <div class="field-row">
+              <label>價格數字 <input name="price" type="number" min="0" inputmode="numeric" placeholder="例如：2400" /></label>
+              <label>狀態
+                <select name="status">
+                  <option>上架</option>
+                  <option>草稿</option>
+                  <option>售完</option>
+                  <option>補貨中</option>
+                </select>
+              </label>
+            </div>
+            <label class="hidden">購買細項與價格
+              <textarea name="purchaseOptions"></textarea>
+            </label>
+            <div>
+              <p class="field-note">購買細項與價格。前台商品卡會自動顯示最低到最高價，商品詳情會讓客人分別選數量。</p>
+              <div class="purchase-editor" id="purchaseOptionEditor"></div>
+              <button class="button secondary small" type="button" id="addPurchaseOption">新增細項</button>
+            </div>
+            <label>商品短描述 <textarea name="description" required placeholder="會出現在商品卡片上。"></textarea></label>
+            <label>商品完整描述 <textarea name="detailDescription" placeholder="會出現在商品詳情頁的商品描述分頁。"></textarea></label>
+            <label>送貨及付款方式 <textarea name="shippingInfo" placeholder="例如：下單後聯絡 Line 官方確認付款與寄送。"></textarea></label>
+            <label>顧客評價 <textarea name="reviewInfo" placeholder="目前可以先寫：評價區準備中。"></textarea></label>
+            <label>購買連結 <input name="link" type="url" placeholder="https://..." /></label>
+            <label>排序 <input name="sort" type="number" value="999" /></label>
+            <input class="hidden" name="images" type="file" accept="image/*" />
+            <button class="button secondary" type="button" id="addImage">新增照片</button>
+            <p class="field-note">每按一次「新增照片」可以再補一張。照片會保留在下方縮圖區，可點縮圖切換預覽，也可按右上角 × 移除。</p>
+            <div class="image-picked" id="pickedImages"></div>
+            <div class="image-controls">
+              <label>圖片水平位置 <input name="imageX" type="range" min="0" max="100" value="50" /></label>
+              <label>圖片垂直位置 <input name="imageY" type="range" min="0" max="100" value="50" /></label>
+              <input class="hidden" name="imageScale" type="range" min="100" max="180" value="100" />
+            </div>
+            <button class="button" type="submit">儲存並上架</button>
+            <p class="message" id="message"></p>
+          </form>
+
+          <div class="preview-stack">
+            <div class="preview-card">
+              <h3>商品卡片預覽</h3>
+              <article class="product-card" id="cardPreview"></article>
+            </div>
+            <div class="detail-panel" id="detailPreview"></div>
+            <div class="preview-save-row">
+              <button class="button" type="submit" form="productForm">儲存並上架</button>
+              <p class="message save-status-pill" id="previewMessage">尚未儲存</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="product-section" id="products">
+        <p class="section-kicker">已上架商品</p>
+        <div class="product-grid" id="productGrid"></div>
+      </section>
+
+      <section class="list-panel">
+        <h2>目前商品</h2>
+        <div class="list" id="list"></div>
+      </section>
+    </main>
+
+    <script>
+      const ADMIN_USER = "muwa.to.sales";
+      const loginScreen = document.querySelector("#loginScreen");
+      const adminShell = document.querySelector("#adminShell");
+      const loginForm = document.querySelector("#loginForm");
+      const loginMessage = document.querySelector("#loginMessage");
+      const editorPanel = document.querySelector("#editorPanel");
+      const productForm = document.querySelector("#productForm");
+      const productGrid = document.querySelector("#productGrid");
+      const cardPreview = document.querySelector("#cardPreview");
+      const detailPreview = document.querySelector("#detailPreview");
+      const pickedImages = document.querySelector("#pickedImages");
+      const list = document.querySelector("#list");
+      const message = document.querySelector("#message");
+      const previewMessage = document.querySelector("#previewMessage");
+      const refreshProducts = document.querySelector("#refreshProducts");
+      const addProduct = document.querySelector("#addProduct");
+      const addImage = document.querySelector("#addImage");
+      const addPurchaseOption = document.querySelector("#addPurchaseOption");
+      const purchaseOptionEditor = document.querySelector("#purchaseOptionEditor");
+      const logout = document.querySelector("#logout");
+      let adminUser = sessionStorage.getItem("muwaAdminUser") || "";
+      let adminKey = sessionStorage.getItem("muwaAdminKey") || "";
+      let previewImages = [];
+      let activePreviewImage = 0;
+      let dragState = null;
+      let editingProductId = "";
+      let currentProducts = [];
+
+      function setSaveMessage(text, status = "") {
+        [message, previewMessage].forEach((node) => {
+          if (!node) return;
+          node.textContent = text;
+          node.classList.remove("is-saving", "is-success", "is-error");
+          if (status) node.classList.add(status);
+        });
+      }
+
+      function escapeHtml(value) {
+        return String(value || "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function formatPrice(price) {
+        const value = String(price || "").trim();
+        if (!value) return "NT$ XXX";
+        if (value.startsWith("NT$")) return value.replace(/^NT\$\s*/, "NT$ ");
+        return `NT$ ${value}`;
+      }
+
+      function parsePrice(price) {
+        const numeric = String(price || "").replace(/[^\d]/g, "");
+        return Number(numeric || 0);
+      }
+
+      function formatCompactMoney(amount) {
+        return `NT$${Number(amount || 0).toLocaleString("zh-TW")}`;
+      }
+
+      const DEFAULT_PURCHASE_OPTIONS = [
+        { name: "單個碗", price: 199 },
+        { name: "單個木架", price: 300 },
+        { name: "飼料碗架一組", price: 799 },
+      ];
+
+      function normalizePurchaseOption(item) {
+        return {
+          name: String(item?.name || "").trim(),
+          price: parsePrice(item?.price),
+          addons: Array.isArray(item?.addons)
+            ? item.addons
+                .map((addon) => ({
+                  name: String(addon?.name || "").trim(),
+                  price: parsePrice(addon?.price),
+                }))
+                .filter((addon) => addon.name && addon.price > 0)
+            : [],
+        };
+      }
+
+      function parsePurchaseOptions(value, productName = "") {
+        if (Array.isArray(value)) {
+          return value.map(normalizePurchaseOption).filter((item) => item.name && item.price > 0);
+        }
+
+        const text = String(value || "").trim();
+        if (text.startsWith("[") || text.startsWith("{")) {
+          try {
+            const parsed = JSON.parse(text);
+            const options = Array.isArray(parsed) ? parsed : parsed.options;
+            if (Array.isArray(options)) {
+              return options.map(normalizePurchaseOption).filter((item) => item.name && item.price > 0);
+            }
+          } catch {
+            // Falls through to legacy line parsing below.
+          }
+        }
+
+        const rows = String(value || "")
+          .split(/\r?\n/)
+          .map((row) => row.trim())
+          .filter(Boolean)
+          .map((row) => {
+            const parts = row.split(/[,，]/);
+            return {
+              name: String(parts[0] || "").trim(),
+              price: parsePrice(parts.slice(1).join(",")),
+            };
+          })
+          .filter((item) => item.name && item.price > 0);
+
+        if (!rows.length && String(productName || "").includes("飼料碗架")) {
+          return DEFAULT_PURCHASE_OPTIONS;
+        }
+
+        return rows;
+      }
+
+      function formatPurchaseOptions(options) {
+        const normalized = (options || []).map(normalizePurchaseOption).filter((item) => item.name && item.price > 0);
+        return normalized.length ? JSON.stringify(normalized) : "";
+      }
+
+      function formatPriceRange(options, fallbackPrice) {
+        const prices = (options || []).map((item) => Number(item.price || 0)).filter((price) => price > 0);
+        if (!prices.length) return formatPrice(fallbackPrice);
+        const min = Math.min(...prices);
+        const max = Math.max(...prices);
+        return min === max ? formatCompactMoney(min) : `${formatCompactMoney(min)}~${formatCompactMoney(max)}`;
+      }
+
+      function previewPurchaseRows(options, fallbackName, fallbackPrice) {
+        const rows = options && options.length
+          ? options
+          : parsePrice(fallbackPrice)
+            ? [{ name: fallbackName || "商品", price: parsePrice(fallbackPrice) }]
+            : [];
+        if (!rows.length) {
+          return {
+            rowsHtml: `<p class="field-note">尚未設定購買細項。</p>`,
+            total: 0,
+          };
+        }
+
+        const rowsHtml = rows.map((item) => `
+          <article class="purchase-option-row">
+            <div class="purchase-line">
+              <button class="purchase-option-name" type="button">
+                <span>${escapeHtml(item.name)}</span>
+                <small>${escapeHtml(formatCompactMoney(item.price))}</small>
+              </button>
+              <div class="option-qty"><button type="button">−</button><span>1</span><button type="button">+</button></div>
+              <strong class="purchase-subtotal">小計 ${escapeHtml(formatCompactMoney(item.price))}</strong>
+            </div>
+            ${item.addons?.length ? `
+              <div class="addon-options">
+                <p>可加購</p>
+                ${item.addons.map((addon) => `
+                  <div class="addon-option-row">
+                    <span>${escapeHtml(addon.name)} <small>${escapeHtml(formatCompactMoney(addon.price))}</small></span>
+                    <div class="option-qty addon-qty"><button type="button">−</button><span>0</span><button type="button">+</button></div>
+                    <strong>小計 NT$0</strong>
+                  </div>
+                `).join("")}
+              </div>
+            ` : ""}
+          </article>
+        `).join("");
+
+        return {
+          rowsHtml,
+          total: rows.reduce((sum, item) => sum + Number(item.price || 0), 0),
+        };
+      }
+
+      function richTextHtml(value) {
+        const text = String(value || "").trim();
+        if (!text) return "<p>內容準備中。</p>";
+        return text
+          .split(/\n{2,}/)
+          .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`)
+          .join("");
+      }
+
+      function getEditorPurchaseOptions() {
+        return Array.from(purchaseOptionEditor.querySelectorAll("[data-purchase-row]"))
+          .map((row) => {
+            const addons = Array.from(row.querySelectorAll("[data-addon-row]"))
+              .map((addonRow) => ({
+                name: addonRow.querySelector("[data-addon-name]")?.value.trim() || "",
+                price: parsePrice(addonRow.querySelector("[data-addon-price]")?.value || ""),
+              }))
+              .filter((addon) => addon.name || addon.price > 0);
+            return {
+              name: row.querySelector("[data-purchase-name]")?.value.trim() || "",
+              price: parsePrice(row.querySelector("[data-purchase-price]")?.value || ""),
+              addons,
+            };
+          })
+          .filter((item) => item.name || item.price > 0);
+      }
+
+      function syncPurchaseOptionsFromEditor() {
+        productForm.purchaseOptions.value = formatPurchaseOptions(getEditorPurchaseOptions());
+      }
+
+      function renderPurchaseOptionEditor(options) {
+        const rows = options && options.length ? options : [{ name: "", price: "" }];
+        purchaseOptionEditor.innerHTML = rows.map((item, index) => `
+          <div class="purchase-editor-row" data-purchase-row>
+            <label>細項名稱
+              <input data-purchase-name value="${escapeHtml(item.name || "")}" placeholder="例如：單個碗" />
+            </label>
+            <label>單價
+              <input data-purchase-price type="number" min="0" inputmode="numeric" value="${escapeHtml(item.price || "")}" placeholder="199" />
+            </label>
+            <button class="button secondary small" type="button" data-remove-purchase-option="${index}">刪除</button>
+            <div class="addon-editor" data-addon-list>
+              <div class="addon-editor-head">
+                <strong>指定買這個細項時，可加購的優惠品</strong>
+                <button class="button secondary small" type="button" data-add-addon="${index}">新增加購</button>
+              </div>
+              ${(item.addons || []).map((addon, addonIndex) => `
+                <div class="addon-editor-row" data-addon-row>
+                  <label>加購商品名
+                    <input data-addon-name value="${escapeHtml(addon.name || "")}" placeholder="例如：刻字吊牌" />
+                  </label>
+                  <label>加購單價
+                    <input data-addon-price type="number" min="0" inputmode="numeric" value="${escapeHtml(addon.price || "")}" placeholder="99" />
+                  </label>
+                  <button class="button secondary small" type="button" data-remove-addon="${addonIndex}">刪除加購</button>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        `).join("");
+        syncPurchaseOptionsFromEditor();
+      }
+
+      function setPurchaseOptions(options) {
+        renderPurchaseOptionEditor(options);
+        syncPurchaseOptionsFromEditor();
+        updatePreview();
+      }
+
+      function editorHasPurchaseOptions() {
+        return getEditorPurchaseOptions().some((item) => item.name || item.price > 0);
+      }
+
+      function maybeAutofillDefaultPurchaseOptions() {
+        const name = String(productForm.name.value || "");
+        if (!name.includes("飼料碗架")) return;
+        if (editorHasPurchaseOptions()) return;
+        setPurchaseOptions(DEFAULT_PURCHASE_OPTIONS);
+      }
+
+      function isGoogleRuntime() {
+        return Boolean(window.google && google.script && google.script.run);
+      }
+
+      function showAdmin() {
+        loginScreen.classList.add("hidden");
+        adminShell.classList.remove("hidden");
+        editorPanel.classList.remove("hidden");
+        updatePreview();
+        loadProducts();
+      }
+
+      loginForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const data = new FormData(loginForm);
+        adminUser = String(data.get("adminUser") || "").trim();
+        adminKey = String(data.get("adminKey") || "");
+        if (adminUser !== ADMIN_USER || !adminKey) {
+          loginMessage.textContent = "帳號或密碼錯誤。";
+          return;
+        }
+        sessionStorage.setItem("muwaAdminUser", adminUser);
+        sessionStorage.setItem("muwaAdminKey", adminKey);
+        showAdmin();
+      });
+
+      if (adminUser === ADMIN_USER && adminKey) showAdmin();
+
+      addProduct.addEventListener("click", () => {
+        startNewProduct();
+      });
+
+      logout.addEventListener("click", () => {
+        sessionStorage.removeItem("muwaAdminUser");
+        sessionStorage.removeItem("muwaAdminKey");
+        location.reload();
+      });
+
+      document.querySelector("#jumpProducts").addEventListener("click", () => {
+        document.querySelector("#products").scrollIntoView({ behavior: "smooth" });
+      });
+
+      function readFile(file) {
+        return new Promise((resolve) => {
+          if (!file || !file.name) return resolve("");
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ""));
+          reader.readAsDataURL(file);
+        });
+      }
+
+      async function readImagesFromFiles(files) {
+        const items = await Promise.all(Array.from(files || []).map(async (file) => ({
+          src: await readFile(file),
+          name: file.name,
+          existing: false,
+        })));
+        return items.filter((item) => item.src);
+      }
+
+      productForm.addEventListener("input", (event) => {
+        if (event.target === productForm.name) {
+          maybeAutofillDefaultPurchaseOptions();
+        }
+        if (event.target.closest("[data-purchase-row]")) {
+          syncPurchaseOptionsFromEditor();
+        }
+        updatePreview();
+        setSaveMessage("已修改，尚未儲存。");
+      });
+
+      addPurchaseOption.addEventListener("click", () => {
+        const options = getEditorPurchaseOptions();
+        options.push({ name: "", price: "" });
+        setPurchaseOptions(options);
+        setSaveMessage("已新增細項，尚未儲存。");
+      });
+
+      purchaseOptionEditor.addEventListener("click", (event) => {
+        const addAddonButton = event.target.closest("[data-add-addon]");
+        if (addAddonButton) {
+          const options = getEditorPurchaseOptions();
+          const row = addAddonButton.closest("[data-purchase-row]");
+          const index = Array.from(purchaseOptionEditor.querySelectorAll("[data-purchase-row]")).indexOf(row);
+          if (options[index]) {
+            options[index].addons = options[index].addons || [];
+            options[index].addons.push({ name: "", price: "" });
+            setPurchaseOptions(options);
+            setSaveMessage("已新增加購品，尚未儲存。");
+          }
+          return;
+        }
+
+        const removeAddonButton = event.target.closest("[data-remove-addon]");
+        if (removeAddonButton) {
+          removeAddonButton.closest("[data-addon-row]")?.remove();
+          syncPurchaseOptionsFromEditor();
+          updatePreview();
+          setSaveMessage("已刪除加購品，尚未儲存。");
+          return;
+        }
+
+        const removeButton = event.target.closest("[data-remove-purchase-option]");
+        if (!removeButton) return;
+        const row = removeButton.closest("[data-purchase-row]");
+        row?.remove();
+        if (!purchaseOptionEditor.querySelector("[data-purchase-row]")) {
+          renderPurchaseOptionEditor([{ name: "", price: "" }]);
+        }
+        syncPurchaseOptionsFromEditor();
+        updatePreview();
+        setSaveMessage("已刪除細項，尚未儲存。");
+      });
+
+      addImage.addEventListener("click", () => {
+        productForm.images.click();
+      });
+
+      productForm.images.addEventListener("change", async () => {
+        const addedImages = await readImagesFromFiles(productForm.images.files);
+        previewImages = previewImages.concat(addedImages);
+        if (previewImages.length === addedImages.length) activePreviewImage = 0;
+        productForm.images.value = "";
+        renderPickedImages();
+        updatePreview();
+      });
+
+      function getFormState() {
+        const data = new FormData(productForm);
+        const purchaseOptions = parsePurchaseOptions(data.get("purchaseOptions"), data.get("name"));
+        return {
+          name: data.get("name") || "商品名稱",
+          category: data.get("category") || "全部",
+          price: formatPrice(data.get("price")),
+          priceLabel: formatPriceRange(purchaseOptions, data.get("price")),
+          purchaseOptions,
+          description: data.get("description") || "這裡會顯示商品短描述。",
+          detailDescription: data.get("detailDescription") || data.get("description") || "商品完整介紹會顯示在這裡。",
+          shippingInfo: data.get("shippingInfo") || "MUWA 為小型個人工作室，需溝通設計的商品，請下單後主動聯絡 Line 官方。",
+          reviewInfo: data.get("reviewInfo") || "評價區準備中。",
+          imagePosition: `${data.get("imageX") || 50}% ${data.get("imageY") || 50}%`,
+          imageScale: String(Number(data.get("imageScale") || 100) / 100),
+        };
+      }
+
+      function imageHtml(image, name, position, scale) {
+        const size = `${Math.round(Number(scale || 1) * 100)}%`;
+        return image
+          ? `<div class="image-frame" role="img" aria-label="${escapeHtml(name)}" style="--image-url:url('${image}'); --image-position:${escapeHtml(position)}; --image-size:${size} auto"></div>`
+          : `<div class="product-placeholder">圖片預覽</div>`;
+      }
+
+      function renderPickedImages() {
+        if (!previewImages.length) {
+          pickedImages.innerHTML = "<p class=\"field-note\">尚未選擇圖片。</p>";
+          return;
+        }
+
+        pickedImages.innerHTML = previewImages
+          .map((item, index) => `
+            <div class="${index === activePreviewImage ? "is-active" : ""}" title="第 ${index + 1} 張圖片" data-picked-image="${index}">
+              <img src="${item.src}" alt="已選圖片 ${index + 1}" />
+              <button type="button" data-remove-image="${index}" aria-label="移除第 ${index + 1} 張圖片">×</button>
+            </div>
+          `)
+          .join("");
+      }
+
+      function updatePreview() {
+        if (!productForm) return;
+        const state = getFormState();
+        const image = previewImages[activePreviewImage]?.src || "";
+        const purchasePreview = previewPurchaseRows(state.purchaseOptions, state.name, state.price);
+        cardPreview.innerHTML = `
+          <span class="drag-hint">${image ? "在圖片上按住拖曳，就能調整卡片裁切位置" : "選擇圖片後，這裡會直接顯示預覽"}</span>
+          <div class="product-visual drag-target" data-drag-preview>${imageHtml(image, state.name, state.imagePosition, state.imageScale)}</div>
+          <div class="product-copy">
+            <span class="category">${escapeHtml(state.category)}</span>
+            <h3 contenteditable="true" data-bind="name">${escapeHtml(state.name)}</h3>
+            <p contenteditable="true" data-bind="description">${escapeHtml(state.description)}</p>
+            <strong class="price-pill">${escapeHtml(state.priceLabel)}</strong>
+          </div>
+        `;
+        detailPreview.innerHTML = `
+          <div class="detail-preview-head">
+            <span class="drag-hint">${image ? "這裡是商品詳情大圖，也可以直接拖曳調整位置" : "商品詳情大圖預覽"}</span>
+            <label class="preview-scale-control">圖片縮放 <input data-preview-scale type="range" min="100" max="180" value="${productForm.imageScale.value || 100}" /></label>
+          </div>
+          <div>
+            <div class="detail-main drag-target" data-drag-preview>${imageHtml(image, state.name, state.imagePosition, state.imageScale)}</div>
+            <div class="thumb-strip">
+              ${(previewImages.length ? previewImages : [{ src: "" }]).map((item, index) => `
+                <button class="${index === activePreviewImage ? "is-active" : ""}" type="button" data-preview-image="${index}">
+                  ${item.src ? `<img src="${item.src}" alt="">` : "<span>MUWA</span>"}
+                </button>
+              `).join("")}
+            </div>
+          </div>
+          <div>
+            <p class="section-kicker">${escapeHtml(state.category)}</p>
+            <h2 contenteditable="true" data-bind="name">${escapeHtml(state.name)}</h2>
+            <div class="rich-text-preview" contenteditable="true" data-bind="description">${richTextHtml(state.description)}</div>
+            <strong class="price-pill">${escapeHtml(state.priceLabel)}</strong>
+            <div class="purchase-options">${purchasePreview.rowsHtml}</div>
+            <div class="purchase-total"><span>共計</span><strong>${escapeHtml(formatCompactMoney(purchasePreview.total))}</strong></div>
+            <button class="button" type="button">加到購物車</button>
+          </div>
+          <div class="tabs">
+            <button class="is-active" type="button">商品描述</button>
+            <button type="button">送貨及付款方式</button>
+            <button type="button">顧客評價</button>
+          </div>
+          <div class="tab-panel" contenteditable="true" data-bind="detailDescription">${richTextHtml(state.detailDescription)}</div>
+          <div class="tab-panel" contenteditable="true" data-bind="shippingInfo">${richTextHtml(state.shippingInfo)}</div>
+          <div class="tab-panel" contenteditable="true" data-bind="reviewInfo">${richTextHtml(state.reviewInfo)}</div>
+        `;
+      }
+
+      detailPreview.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-preview-image]");
+        if (!button) return;
+        activePreviewImage = Number(button.dataset.previewImage);
+        renderPickedImages();
+        updatePreview();
+      });
+
+      pickedImages.addEventListener("click", (event) => {
+        const removeButton = event.target.closest("[data-remove-image]");
+        if (removeButton) {
+          const index = Number(removeButton.dataset.removeImage);
+          previewImages.splice(index, 1);
+          activePreviewImage = Math.max(0, Math.min(activePreviewImage, previewImages.length - 1));
+          renderPickedImages();
+          updatePreview();
+          return;
+        }
+
+        const picked = event.target.closest("[data-picked-image]");
+        if (!picked) return;
+        activePreviewImage = Number(picked.dataset.pickedImage);
+        renderPickedImages();
+        updatePreview();
+      });
+
+      document.addEventListener("input", (event) => {
+        const scaleInput = event.target.closest("[data-preview-scale]");
+        if (scaleInput) {
+          productForm.imageScale.value = scaleInput.value;
+          document.querySelectorAll("[data-drag-preview] .image-frame").forEach((image) => {
+            image.style.setProperty("--image-size", `${scaleInput.value}% auto`);
+          });
+          setSaveMessage("已調整圖片縮放，尚未儲存。");
+          return;
+        }
+
+        const editable = event.target.closest("[contenteditable][data-bind]");
+        if (!editable) return;
+        const field = editable.dataset.bind;
+        if (field === "price") {
+          productForm.price.value = String(editable.textContent || "").replace("NT$", "").trim();
+        } else if (productForm.elements[field]) {
+          productForm.elements[field].value = editable.textContent.trim();
+        }
+      });
+
+      function loadProducts() {
+        if (!isGoogleRuntime()) {
+          list.innerHTML = "<p>這裡是本機預覽。正式新增商品時，請用 Google Apps Script 部署後的 Web App URL 開啟。</p>";
+          productGrid.innerHTML = "";
+          return;
+        }
+
+        list.innerHTML = "<p>讀取中...</p>";
+        google.script.run
+          .withSuccessHandler(renderProducts)
+          .withFailureHandler((error) => {
+            list.innerHTML = `<p>讀取失敗：${error.message}</p>`;
+          })
+          .getProducts();
+      }
+
+      function renderProducts(products) {
+        currentProducts = products;
+        if (!products.length) {
+          list.innerHTML = "<p>目前沒有商品。</p>";
+          productGrid.innerHTML = "";
+          return;
+        }
+        productGrid.innerHTML = products.map((item) => renderProductCard(item)).join("");
+        list.innerHTML = products.map((item) => `
+          <article class="item">
+            ${item.image ? `<img src="${item.image}" alt="">` : `<div class="thumb">MUWA</div>`}
+            <div>
+              <p>${item.status} / ${item.category} / ${formatPriceRange(parsePurchaseOptions(item.purchaseOptions, item.name), item.price)}</p>
+              <h3>${item.name}</h3>
+              <p>${item.description}</p>
+            </div>
+            <div class="item-actions">
+              <button class="button small" type="button" data-edit-id="${item.id}">編輯</button>
+              <button class="button blue small" type="button" data-delete-id="${item.id}">刪除</button>
+            </div>
+          </article>
+        `).join("");
+      }
+
+      function renderProductCard(item) {
+        const size = `${Math.round(Number(item.imageScale || 1) * 100)}%`;
+        const priceLabel = formatPriceRange(parsePurchaseOptions(item.purchaseOptions, item.name), item.price);
+        return `
+          <article class="product-card">
+            <div class="product-visual">${item.image ? `<div class="image-frame" role="img" aria-label="${escapeHtml(item.name)}" style="--image-url:url('${item.image}'); --image-position:${escapeHtml(item.imagePosition || "50% 50%")}; --image-size:${size} auto"></div>` : `<div class="product-placeholder">MUWA</div>`}</div>
+            <div class="product-copy">
+              <span class="category">${escapeHtml(item.category || "全部")}</span>
+              <h3>${escapeHtml(item.name)}</h3>
+              <p>${escapeHtml(item.description)}</p>
+              <strong class="price-pill">${escapeHtml(priceLabel)}</strong>
+            </div>
+          </article>
+        `;
+      }
+
+      productForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!isGoogleRuntime()) {
+          setSaveMessage("本機預覽不能儲存商品。請到正式 Apps Script 後台操作。", "is-error");
+          return;
+        }
+
+        setSaveMessage("儲存中，請稍等...", "is-saving");
+        const data = new FormData(productForm);
+        const existingImages = previewImages.filter((item) => item.existing).map((item) => item.url || item.src);
+        const newImages = previewImages.filter((item) => !item.existing);
+        const payload = {
+          id: editingProductId,
+          adminUser,
+          adminKey,
+          name: data.get("name"),
+          category: data.get("category"),
+          price: data.get("price"),
+          purchaseOptions: data.get("purchaseOptions"),
+          status: data.get("status"),
+          sort: data.get("sort"),
+          description: data.get("description"),
+          detailDescription: data.get("detailDescription"),
+          shippingInfo: data.get("shippingInfo"),
+          reviewInfo: data.get("reviewInfo"),
+          imagePosition: `${data.get("imageX") || 50}% ${data.get("imageY") || 50}%`,
+          imageScale: String(Number(data.get("imageScale") || 100) / 100),
+          link: data.get("link"),
+          existingImages,
+          imageNames: newImages.map((item) => item.name || "muwa-product.png"),
+          imagesData: newImages.map((item) => item.src),
+        };
+
+        google.script.run
+          .withSuccessHandler(() => {
+            const imageX = data.get("imageX") || 50;
+            const imageY = data.get("imageY") || 50;
+            const imageScale = data.get("imageScale") || 100;
+            const action = editingProductId ? "商品已更新" : "商品已新增";
+            setSaveMessage(`${action}。已儲存圖片位置：水平 ${imageX}% / 垂直 ${imageY}% / 縮放 ${imageScale}%。`, "is-success");
+            loadProducts();
+          })
+          .withFailureHandler((error) => {
+            setSaveMessage(`儲存失敗：${error.message}`, "is-error");
+          })
+            .saveProduct(payload);
+      });
+
+      function applyImagePositionFromPointer(event, target) {
+        if (!dragState) return;
+        const rect = target.getBoundingClientRect();
+        const dx = ((event.clientX - dragState.startX) / rect.width) * 100;
+        const dy = ((event.clientY - dragState.startY) / rect.height) * 100;
+        const x = Math.round(Math.max(0, Math.min(100, dragState.startXPercent + dx)));
+        const y = Math.round(Math.max(0, Math.min(100, dragState.startYPercent + dy)));
+        productForm.imageX.value = x;
+        productForm.imageY.value = y;
+        document.querySelectorAll("[data-drag-preview] .image-frame").forEach((image) => {
+          image.style.setProperty("--image-position", `${x}% ${y}%`);
+          image.style.setProperty("--image-size", `${productForm.imageScale.value || 100}% auto`);
+        });
+      }
+
+      document.addEventListener("pointerdown", (event) => {
+        const target = event.target.closest("[data-drag-preview]");
+        if (!target || !previewImages.length) return;
+        dragState = {
+          target,
+          startX: event.clientX,
+          startY: event.clientY,
+          startXPercent: Number(productForm.imageX.value || 50),
+          startYPercent: Number(productForm.imageY.value || 50),
+        };
+        target.classList.add("is-dragging");
+        target.setPointerCapture?.(event.pointerId);
+      });
+
+      document.addEventListener("pointermove", (event) => {
+        if (!dragState) return;
+        applyImagePositionFromPointer(event, dragState.target);
+      });
+
+      document.addEventListener("pointerup", () => {
+        if (dragState) {
+          dragState.target.classList.remove("is-dragging");
+          updatePreview();
+          setSaveMessage("已調整圖片位置，尚未儲存。");
+        }
+        dragState = null;
+      });
+
+      list.addEventListener("click", (event) => {
+        const editButton = event.target.closest("[data-edit-id]");
+        if (editButton) {
+          editProduct(editButton.dataset.editId);
+          return;
+        }
+
+        const button = event.target.closest("[data-delete-id]");
+        if (!button || !isGoogleRuntime()) return;
+        button.disabled = true;
+        google.script.run
+          .withSuccessHandler(loadProducts)
+          .withFailureHandler((error) => {
+            button.disabled = false;
+            setSaveMessage(`刪除失敗：${error.message}`, "is-error");
+          })
+          .deleteProduct(button.dataset.deleteId, adminKey);
+      });
+
+      function startNewProduct() {
+        editingProductId = "";
+        productForm.reset();
+        productForm.category.value = "全部";
+        productForm.sort.value = "999";
+        productForm.status.value = "上架";
+          productForm.imageX.value = "50";
+          productForm.imageY.value = "50";
+          productForm.imageScale.value = "100";
+        renderPurchaseOptionEditor([{ name: "", price: "" }]);
+        previewImages = [];
+        activePreviewImage = 0;
+        editorPanel.classList.remove("hidden");
+        setSaveMessage("尚未儲存");
+        renderPickedImages();
+        updatePreview();
+        editorPanel.scrollIntoView({ behavior: "smooth" });
+      }
+
+      function editProduct(id) {
+        const item = currentProducts.find((product) => String(product.id) === String(id));
+        if (!item) return;
+        editingProductId = item.id;
+        productForm.name.value = item.name || "";
+        productForm.category.value = item.category || "全部";
+        productForm.price.value = String(item.price || "").replace("NT$", "").trim();
+        renderPurchaseOptionEditor(parsePurchaseOptions(item.purchaseOptions, item.name));
+        productForm.status.value = item.status || "上架";
+        productForm.sort.value = item.sort || "999";
+        productForm.description.value = item.description || "";
+        productForm.detailDescription.value = item.detailDescription || "";
+        productForm.shippingInfo.value = item.shippingInfo || "";
+        productForm.reviewInfo.value = item.reviewInfo || "";
+        productForm.link.value = item.link || "";
+        const [x, y] = String(item.imagePosition || "50% 50%").split(" ");
+        productForm.imageX.value = parseInt(x, 10) || 50;
+        productForm.imageY.value = parseInt(y, 10) || 50;
+        productForm.imageScale.value = Math.round(Number(item.imageScale || 1) * 100) || 100;
+        previewImages = (item.images && item.images.length ? item.images : item.image ? [item.image] : [])
+          .filter(Boolean)
+          .map((url) => ({ src: url, url, name: "既有照片", existing: true }));
+        activePreviewImage = 0;
+        editorPanel.classList.remove("hidden");
+        setSaveMessage(`正在編輯：${item.name}，尚未儲存本次修改。`);
+        renderPickedImages();
+        updatePreview();
+        editorPanel.scrollIntoView({ behavior: "smooth" });
+      }
+
+      refreshProducts.addEventListener("click", loadProducts);
+      renderPurchaseOptionEditor([{ name: "", price: "" }]);
+      renderPickedImages();
+      updatePreview();
+    </script>
+  </body>
+</html>

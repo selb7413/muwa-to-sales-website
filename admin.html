@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MUWA 商品後台</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="admin-body">
+    <header class="site-header" aria-label="後台導覽">
+      <a class="brand" href="./index.html" aria-label="回到前台">
+        <img class="brand-logo" src="./assets/muwa-logo.png" alt="MUWA" />
+      </a>
+      <nav class="nav-links" aria-label="後台操作">
+        <a href="./index.html">回前台</a>
+      </nav>
+      <a class="header-cta" href="./index.html#products">看商品</a>
+    </header>
+
+    <main>
+      <section class="admin-section" aria-labelledby="admin-title">
+        <div class="section-copy">
+          <p class="section-kicker">商品後台</p>
+          <h1 id="admin-title">新增 MUWA 商品</h1>
+          <p>先把商品放進這裡，前台商品頁就會顯示。這是本機靜態後台，資料會暫存在這台電腦的瀏覽器裡。</p>
+        </div>
+
+        <div class="admin-layout">
+          <form class="admin-form">
+            <label>
+              商品名稱
+              <input name="name" type="text" placeholder="例如：Co-Living Desk Classic" required />
+            </label>
+            <label>
+              分類
+              <input name="category" type="text" placeholder="例如：全部 / 桌邊用品 / 貓咪家具" value="全部" />
+            </label>
+            <label>
+              價格或狀態
+              <input name="price" type="text" placeholder="例如：NT$ 980 / 即將上架 / 補貨中" />
+            </label>
+            <label>
+              商品描述
+              <textarea name="description" rows="5" placeholder="用飼主看得懂的方式說明用途、功能、適合情境。" required></textarea>
+            </label>
+            <label>
+              商品購買連結
+              <input name="link" type="url" placeholder="https://www.paipaipets-lab.com/products/co-living-desk-classic" />
+            </label>
+            <label>
+              商品圖片
+              <input name="image" type="file" accept="image/*" />
+            </label>
+            <label>
+              備註
+              <textarea name="note" rows="3" placeholder="例如：參考市面商品、想改良的地方、供應狀態。"></textarea>
+            </label>
+            <button class="button primary" type="submit">新增商品</button>
+            <p class="form-message" role="status" aria-live="polite"></p>
+          </form>
+
+          <div class="admin-products">
+            <div class="admin-actions">
+              <h2>目前商品</h2>
+              <button class="filter-button" type="button" data-action="clear">清空商品</button>
+            </div>
+            <div class="admin-list" aria-live="polite"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="./admin.js"></script>
+  </body>
+</html>

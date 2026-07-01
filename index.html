@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MUWA｜不只是商品，是有你參與的日常</title>
+    <meta
+      name="description"
+      content="MUWA 把實際做好、自己也願意使用的商品整理上架。讓每一件日常物品，都多一點關於你的元素與情感價值。"
+    />
+    <link rel="stylesheet" href="./styles.css?v=20260630-mobile-polish" />
+  </head>
+  <body>
+    <header class="site-header" aria-label="主要導覽">
+      <a class="brand" href="#top" aria-label="回到首頁">
+        <img class="brand-logo" src="./assets/muwa-logo.png" alt="MUWA" />
+      </a>
+      <nav class="nav-links" aria-label="頁面區塊">
+        <a href="#products">商品</a>
+        <a href="#wishlist">許願池</a>
+        <a href="#about">關於我們</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="quiet-line">不是每個商品，都能變成自己的日常。</p>
+          <h1 id="hero-title">
+            不只是商品，<br />
+            是有你參與的日常。
+          </h1>
+          <p class="hero-lede">
+            MUWA 希望身邊使用的東西，不只是買來的物品，而是能多一點自己的偏好、個性與故事。讓每一件日常小物，都多一點情感價值，也多一點「這是屬於我的」感覺。
+          </p>
+          <div class="hero-actions" aria-label="主要操作">
+            <a class="button primary" href="#products">看看已上架商品</a>
+            <a class="button secondary" href="#wishlist">我要許願商品</a>
+          </div>
+        </div>
+        <div class="hero-scene">
+          <img src="./assets/hero-pop-cats.png" alt="MUWA 普普風品牌主視覺" />
+        </div>
+      </section>
+
+      <section class="product-section" id="products" aria-labelledby="products-title">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">已上架商品</p>
+          </div>
+        </div>
+
+        <div class="filter-row" aria-label="商品分類">
+          <button class="filter-button is-active" data-filter="all" type="button">全部</button>
+        </div>
+
+        <div class="product-grid" id="product-grid" aria-live="polite">
+          <div class="empty-products">
+            <h3>商品準備中</h3>
+            <p>目前還沒有正式上架的商品。新品準備好後，會在這裡公布。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="wishlist-section" id="wishlist" aria-labelledby="wishlist-title">
+        <div class="wishlist-panel">
+          <div>
+            <p class="section-kicker">商品許願池</p>
+            <h2 id="wishlist-title">
+              我想要買，<br />
+              但是沒有人做。
+            </h2>
+            <p>
+              如果你腦中有一個想法，或看過市面上的商品但覺得還可以更貼近自己的生活，都可以先提供概念。也可以上傳示意圖，讓我們知道你想解決的是什麼情境。
+            </p>
+          </div>
+          <form class="wishlist-form">
+            <label>
+              想許願的商品或情境
+              <input type="text" name="wishTitle" placeholder="例如：想要更有自己風格的桌面收納" />
+            </label>
+            <label>
+              你的想法
+              <textarea name="wishDetail" rows="5" placeholder="可以描述用途、希望改善的痛點、預算感，或你覺得市面商品哪裡不夠好。"></textarea>
+            </label>
+            <label>
+              上傳示意圖
+              <input type="file" name="wishImage" accept="image/*" />
+            </label>
+            <button class="button primary" type="submit">送出許願</button>
+            <p class="form-message" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+      </section>
+
+      <section class="faq-section" aria-labelledby="faq-title">
+        <div class="section-copy">
+          <p class="section-kicker">常見問題</p>
+          <h2 id="faq-title">購買前先問清楚，日常小物不用賭運氣。</h2>
+        </div>
+        <div class="faq-list">
+          <details>
+            <summary>現在可以直接購買嗎？</summary>
+            <p>這版網站主要用來發布已做好的商品。之後每個商品都可以補上購買連結，讓大家直接看、直接買。</p>
+          </details>
+          <details>
+            <summary>商品會怎麼上架？</summary>
+            <p>之後可以把每個商品補上照片、名稱、價格、尺寸、材質、使用情境和購買連結。</p>
+          </details>
+          <details>
+            <summary>MUWA 主要想做什麼？</summary>
+            <p>MUWA 想做的不只是販售物品，而是讓商品多一點關於你的元素、情感與生活痕跡。</p>
+          </details>
+        </div>
+      </section>
+
+      <section class="order-section" id="about" aria-labelledby="about-title">
+        <div class="order-card">
+          <div>
+            <p class="section-kicker">關於我們</p>
+            <h2 id="about-title">
+              有需要服務 !<br />
+              歡迎來找 MUWA。
+            </h2>
+            <p>如果你想詢問商品、合作或任何服務相關需求，歡迎私訊 MUWA 的 IG / Threads，或來信與我們聯絡。</p>
+          </div>
+          <div class="contact-card" aria-label="MUWA 聯絡資訊">
+            <div class="contact-link">
+              <span>IG / Threads</span>
+              <strong>私訊 MUWA</strong>
+            </div>
+            <a class="contact-link" href="mailto:muwa.to.sales@gmail.com">
+              <span>Email :</span>
+              <strong>muwa.to.sales@gmail.com</strong>
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>
+        Muwa為小型個人工作室<br />
+        需溝通設計，請下單後主動聯絡Line 官方，勿擅自先付款~
+      </p>
+    </footer>
+
+    <script src="./config.js?v=20260630-mobile-polish"></script>
+    <script src="./script.js?v=20260630-mobile-polish"></script>
+  </body>
+</html>

@@ -1,0 +1,22 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs and temporary files
+*.log
+tmp/
+.tmp/
+
+# Local-only secrets
+.env
+.env.*
+*.key
+secrets.json
+credentials.json
+.credentials.json
+
+# Dependency folders, if tooling is added later
+node_modules/
+.venv/
+__pycache__/
