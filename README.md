@@ -9,6 +9,7 @@ MUWA sales website extracted into an independent repository.
 - `script.js` - storefront interactions and product rendering
 - `config.js` - public runtime endpoints
 - `assets/` - logo, hero images, QR code, and product visuals
+- `admin.html` - legacy-compatible admin redirect for `/admin`
 - `admin/index.html` - short admin entry that redirects to the product admin
 - `product-admin.html` - Google Apps Script product admin view
 - `apps-script-product-admin.gs`, `google-apps-script.js` - Google Apps Script helpers
