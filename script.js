@@ -40,6 +40,17 @@ const DEFAULT_PURCHASE_OPTIONS = [
   { name: "飼料碗架一組", price: 799 },
 ];
 
+const SHIPPING_OPTIONS = {
+  home: { label: "宅配", fee: 140 },
+  store: { label: "店到店", fee: 60 },
+};
+
+const STORE_LOOKUP_LINKS = {
+  "7-11": "https://emap.pcsc.com.tw/",
+  "全家": "https://www.family.com.tw/Marketing/storemap/",
+  "萊爾富": "https://www.hilife.com.tw/filter",
+};
+
 function normalizePurchaseOption(item) {
   return {
     name: String(item?.name || "").trim(),
@@ -118,6 +129,12 @@ function richTextHtml(value) {
     .split(/\n{2,}/)
     .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`)
     .join("");
+}
+
+function plainTextHtml(value) {
+  const text = String(value || "").trim();
+  if (!text) return "<p>內容準備中。</p>";
+  return `<pre>${escapeHtml(text)}</pre>`;
 }
 
 function imageFrame(src, label, position, scale) {
@@ -252,7 +269,6 @@ function ensureProductModal() {
         <p class="section-kicker detail-category"></p>
         <h2 id="detail-title"></h2>
         <div class="detail-description"></div>
-        <div class="detail-note">下單前如需溝通設計，請先聯絡 MUWA 確認細節。</div>
         <strong class="detail-price"></strong>
         <div class="purchase-options" data-purchase-options aria-label="購買細項"></div>
         <div class="purchase-total"><span>共計</span><strong data-detail-total>NT$ 0</strong></div>
@@ -304,7 +320,7 @@ function ensureCartModal() {
     <div class="cart-backdrop" data-close-cart></div>
     <article class="cart-panel" role="dialog" aria-modal="true" aria-labelledby="cart-title">
       <h2 id="cart-title">購物車</h2>
-      <p>選擇想購買的商品與數量，結帳後請加入官方 LINE，跟 MUWA 討論細節。</p>
+      <p>確認商品與數量後，下一步填寫購買資訊並建立訂單。</p>
       <div class="cart-list" data-cart-list></div>
       <div class="cart-actions">
         <button class="button secondary" type="button" data-close-cart>回到上一頁</button>
@@ -313,6 +329,112 @@ function ensureCartModal() {
     </article>
   `;
   document.body.appendChild(modal);
+  return modal;
+}
+
+function ensureOrderModal() {
+  let modal = document.querySelector("#order-checkout");
+  if (modal) return modal;
+
+  modal = document.createElement("section");
+  modal.id = "order-checkout";
+  modal.className = "order-checkout";
+  modal.setAttribute("aria-hidden", "true");
+  modal.innerHTML = `
+    <div class="order-backdrop" data-close-order></div>
+    <article class="order-panel" role="dialog" aria-modal="true" aria-labelledby="order-title">
+      <button class="detail-close" type="button" data-close-order aria-label="關閉訂單視窗">×</button>
+      <div data-order-form-view>
+        <h2 id="order-title">填寫購買資訊</h2>
+        <p class="order-intro">非客製商品可先建立訂單。送出後會產生訂單編號，請依畫面提供的帳戶完成轉帳。</p>
+        <div class="order-summary" data-order-summary></div>
+        <form class="order-form" data-order-form>
+          <div class="order-grid">
+            <label>
+              姓名
+              <input type="text" name="customerName" autocomplete="name" required />
+            </label>
+            <label>
+              手機
+              <input type="tel" name="customerPhone" autocomplete="tel" required />
+            </label>
+          </div>
+          <label>
+            電子信箱
+            <input type="email" name="customerEmail" autocomplete="email" required />
+          </label>
+
+          <fieldset class="shipping-fieldset">
+            <legend>運送方式</legend>
+            <label class="shipping-choice">
+              <input type="radio" name="shippingMethod" value="home" checked required />
+              <span>宅配 <strong>${formatCompactMoney(SHIPPING_OPTIONS.home.fee)}</strong></span>
+            </label>
+            <label class="shipping-choice">
+              <input type="radio" name="shippingMethod" value="store" required />
+              <span>7-11 / 全家 / 萊爾富店到店 <strong>${formatCompactMoney(SHIPPING_OPTIONS.store.fee)}</strong></span>
+            </label>
+          </fieldset>
+
+          <div class="shipping-fields" data-home-fields>
+            <label>
+              宅配地址
+              <input type="text" name="homeAddress" autocomplete="street-address" required />
+            </label>
+          </div>
+
+          <div class="shipping-fields" data-store-fields hidden>
+            <div class="order-grid">
+              <label>
+                超商
+                <select name="storeChain" disabled>
+                  <option value="7-11">7-11</option>
+                  <option value="全家">全家</option>
+                  <option value="萊爾富">萊爾富</option>
+                </select>
+              </label>
+              <a class="store-lookup" href="${STORE_LOOKUP_LINKS["7-11"]}" target="_blank" rel="noopener" data-store-lookup>查詢門市</a>
+            </div>
+            <p class="field-note">請先開啟門市查詢頁，找到門市後把資訊填回下方。</p>
+            <div class="order-grid">
+              <label>
+                門市名稱
+                <input type="text" name="storeName" disabled />
+              </label>
+              <label>
+                門市店號
+                <input type="text" name="storeCode" disabled />
+              </label>
+            </div>
+            <label>
+              門市地址
+              <input type="text" name="storeAddress" disabled />
+            </label>
+          </div>
+
+          <label>
+            轉帳帳戶末 5 碼
+            <input type="text" name="transferLast5" inputmode="numeric" pattern="\\d{5}" maxlength="5" placeholder="例如：90123" required />
+          </label>
+
+          <div class="order-total" data-order-total></div>
+          <p class="form-message" data-order-message role="status" aria-live="polite"></p>
+          <div class="cart-actions">
+            <button class="button secondary" type="button" data-order-back>回到購物車</button>
+            <button class="button primary" type="submit">送出訂單</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="order-success" data-order-success hidden></div>
+    </article>
+  `;
+  document.body.appendChild(modal);
+  modal.querySelector("[data-order-form]").addEventListener("submit", submitOrderForm);
+  modal.querySelectorAll('input[name="shippingMethod"]').forEach((input) => {
+    input.addEventListener("change", updateOrderShippingFields);
+  });
+  modal.querySelector('select[name="storeChain"]').addEventListener("change", updateStoreLookupLink);
   return modal;
 }
 
@@ -481,8 +603,25 @@ function getCartKey(product, optionName) {
   return `${getProductKey(product)}::${optionName}`;
 }
 
-function addActiveProductToCart() {
-  if (!activeProduct) return;
+function isCustomProduct(productOrItem) {
+  const category = String(productOrItem?.category || "").toLowerCase();
+  return /客製|客制|custom/.test(category);
+}
+
+function getSelectedCartItems() {
+  return Object.values(cartItems).filter((item) => Number(item.qty || 0) > 0);
+}
+
+function getCartSubtotal(items = getSelectedCartItems()) {
+  return items.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 0), 0);
+}
+
+function getOrderEndpoint() {
+  return window.MUWA_CONFIG?.orderEndpoint || window.MUWA_CONFIG?.productFeedUrl || "";
+}
+
+function addActiveProductToCart(mode = "add") {
+  if (!activeProduct) return 0;
   const rows = Array.from(document.querySelectorAll("#product-detail [data-option-index]"));
   let addedQty = 0;
   rows.forEach((row) => {
@@ -493,13 +632,15 @@ function addActiveProductToCart() {
     if (qty <= 0) return;
     const key = getCartKey(activeProduct, optionName);
     const previous = cartItems[key]?.qty || 0;
+    const nextQty = mode === "set" ? qty : previous + qty;
     cartItems[key] = {
       key,
       productKey: getProductKey(activeProduct),
       productName: activeProduct.name || "MUWA 商品",
+      category: activeProduct.category || "",
       optionName,
       price,
-      qty: previous + qty,
+      qty: nextQty,
       image: activeProduct.images?.[0] || "",
     };
     addedQty += qty;
@@ -515,13 +656,15 @@ function addActiveProductToCart() {
     const optionName = `${parentName} 加購：${addonName}`;
     const key = getCartKey(activeProduct, optionName);
     const previous = cartItems[key]?.qty || 0;
+    const nextQty = mode === "set" ? qty : previous + qty;
     cartItems[key] = {
       key,
       productKey: getProductKey(activeProduct),
       productName: activeProduct.name || "MUWA 商品",
+      category: activeProduct.category || "",
       optionName,
       price,
-      qty: previous + qty,
+      qty: nextQty,
       image: activeProduct.images?.[0] || "",
     };
     addedQty += qty;
@@ -531,6 +674,7 @@ function addActiveProductToCart() {
   if (message) {
     message.textContent = addedQty > 0 ? `已加入購物車：共 ${addedQty} 件細項` : "請先選擇要購買的細項數量。";
   }
+  return addedQty;
 }
 
 function openCart() {
@@ -609,9 +753,271 @@ function closeLineCheckout() {
   const modal = ensureLineModal();
   modal.classList.remove("is-open");
   modal.setAttribute("aria-hidden", "true");
-  if (!document.querySelector(".product-detail.is-open") && !document.querySelector(".cart-detail.is-open")) {
+  if (!document.querySelector(".product-detail.is-open") && !document.querySelector(".cart-detail.is-open") && !document.querySelector(".order-checkout.is-open")) {
     document.body.classList.remove("detail-open");
   }
+}
+
+function openOrderCheckout() {
+  const items = getSelectedCartItems();
+  if (!items.length) {
+    openCart();
+    const list = document.querySelector("[data-cart-list]");
+    if (list) list.innerHTML = "<p>購物車目前是空的。請先加入商品再結帳。</p>";
+    return;
+  }
+
+  if (items.some(isCustomProduct)) {
+    openLineCheckout();
+    return;
+  }
+
+  const modal = ensureOrderModal();
+  renderOrderForm();
+  closeCart();
+  closeProductDetail();
+  modal.classList.add("is-open");
+  modal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("detail-open");
+}
+
+function closeOrderCheckout() {
+  const modal = ensureOrderModal();
+  modal.classList.remove("is-open");
+  modal.setAttribute("aria-hidden", "true");
+  if (!document.querySelector(".product-detail.is-open") && !document.querySelector(".cart-detail.is-open") && !document.querySelector(".line-checkout.is-open")) {
+    document.body.classList.remove("detail-open");
+  }
+}
+
+function renderOrderForm() {
+  const modal = ensureOrderModal();
+  const form = modal.querySelector("[data-order-form]");
+  const items = getSelectedCartItems();
+  const summary = modal.querySelector("[data-order-summary]");
+  modal.querySelector("[data-order-form-view]").hidden = false;
+  modal.querySelector("[data-order-success]").hidden = true;
+  form.reset();
+  form.querySelector('input[name="shippingMethod"][value="home"]').checked = true;
+  modal.querySelector("[data-order-message]").textContent = "";
+  summary.innerHTML = items
+    .map((item) => {
+      const subtotal = Number(item.price || 0) * Number(item.qty || 0);
+      return `
+        <div class="order-summary-row">
+          <span>${escapeHtml(item.productName)}｜${escapeHtml(item.optionName)} × ${Number(item.qty || 0)}</span>
+          <strong>${escapeHtml(formatCompactMoney(subtotal))}</strong>
+        </div>
+      `;
+    })
+    .join("");
+  updateOrderShippingFields();
+}
+
+function getSelectedShippingMethod() {
+  const modal = ensureOrderModal();
+  return modal.querySelector('input[name="shippingMethod"]:checked')?.value || "home";
+}
+
+function getSelectedShipping() {
+  return SHIPPING_OPTIONS[getSelectedShippingMethod()] || SHIPPING_OPTIONS.home;
+}
+
+function updateOrderShippingFields() {
+  const modal = ensureOrderModal();
+  const method = getSelectedShippingMethod();
+  const homeFields = modal.querySelector("[data-home-fields]");
+  const storeFields = modal.querySelector("[data-store-fields]");
+  const homeInputs = homeFields.querySelectorAll("input");
+  const storeInputs = storeFields.querySelectorAll("input, select");
+
+  homeFields.hidden = method !== "home";
+  storeFields.hidden = method !== "store";
+  homeInputs.forEach((input) => {
+    input.disabled = method !== "home";
+    input.required = method === "home";
+  });
+  storeInputs.forEach((input) => {
+    input.disabled = method !== "store";
+    input.required = method === "store" && input.tagName !== "SELECT";
+  });
+  updateStoreLookupLink();
+  updateOrderTotal();
+}
+
+function updateStoreLookupLink() {
+  const modal = ensureOrderModal();
+  const select = modal.querySelector('select[name="storeChain"]');
+  const link = modal.querySelector("[data-store-lookup]");
+  const chain = select?.value || "7-11";
+  if (link) {
+    link.href = STORE_LOOKUP_LINKS[chain] || STORE_LOOKUP_LINKS["7-11"];
+    link.textContent = `查詢 ${chain} 門市`;
+  }
+}
+
+function updateOrderTotal() {
+  const modal = ensureOrderModal();
+  const subtotal = getCartSubtotal();
+  const shipping = getSelectedShipping();
+  const total = subtotal + Number(shipping.fee || 0);
+  const node = modal.querySelector("[data-order-total]");
+  if (node) {
+    node.innerHTML = `
+      <span>商品小計 ${escapeHtml(formatCompactMoney(subtotal))}</span>
+      <span>運費 ${escapeHtml(formatCompactMoney(shipping.fee))}</span>
+      <strong>總計 ${escapeHtml(formatCompactMoney(total))}</strong>
+    `;
+  }
+}
+
+function buildOrderPayload(form) {
+  const data = new FormData(form);
+  const items = getSelectedCartItems().map((item) => ({
+    productName: item.productName,
+    optionName: item.optionName,
+    price: Number(item.price || 0),
+    qty: Number(item.qty || 0),
+    subtotal: Number(item.price || 0) * Number(item.qty || 0),
+  }));
+  const shippingMethod = String(data.get("shippingMethod") || "home");
+  const shipping = SHIPPING_OPTIONS[shippingMethod] || SHIPPING_OPTIONS.home;
+  const subtotal = getCartSubtotal();
+  const storeChain = String(data.get("storeChain") || "");
+
+  return {
+    customerName: String(data.get("customerName") || "").trim(),
+    customerPhone: String(data.get("customerPhone") || "").trim(),
+    customerEmail: String(data.get("customerEmail") || "").trim(),
+    shippingMethod,
+    shippingLabel: shippingMethod === "home" ? "宅配" : `${storeChain || "店到店"} 店到店`,
+    shippingFee: Number(shipping.fee || 0),
+    homeAddress: String(data.get("homeAddress") || "").trim(),
+    storeChain,
+    storeName: String(data.get("storeName") || "").trim(),
+    storeCode: String(data.get("storeCode") || "").trim(),
+    storeAddress: String(data.get("storeAddress") || "").trim(),
+    transferLast5: String(data.get("transferLast5") || "").trim(),
+    items,
+    itemSubtotal: subtotal,
+    total: subtotal + Number(shipping.fee || 0),
+  };
+}
+
+async function submitOrderForm(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const modal = ensureOrderModal();
+  const message = modal.querySelector("[data-order-message]");
+  const endpoint = getOrderEndpoint();
+
+  if (!endpoint) {
+    message.textContent = "訂單端點尚未設定。請先到 config.js 填入 Apps Script 網址。";
+    return;
+  }
+
+  if (!form.reportValidity()) return;
+  const payload = buildOrderPayload(form);
+  if (!payload.items.length) {
+    message.textContent = "購物車目前是空的，請先加入商品。";
+    return;
+  }
+
+  message.textContent = "訂單送出中...";
+  form.querySelector('button[type="submit"]').disabled = true;
+
+  try {
+    const result = await submitOrderToGoogleScript(endpoint, payload);
+    renderOrderSuccess(result, payload);
+    cartItems = {};
+    updateCartButton();
+  } catch (error) {
+    message.textContent = error?.message || "訂單送出失敗，請稍後再試，或直接私訊 MUWA。";
+  } finally {
+    form.querySelector('button[type="submit"]').disabled = false;
+  }
+}
+
+function renderOrderSuccess(result, payload) {
+  const modal = ensureOrderModal();
+  const orderId = result.orderId || "訂單已送出";
+  modal.querySelector("[data-order-form-view]").hidden = true;
+  const success = modal.querySelector("[data-order-success]");
+  success.hidden = false;
+  success.innerHTML = `
+    <p class="section-kicker">訂單已建立</p>
+    <h2>${escapeHtml(orderId)}</h2>
+    <p>請依照下方資訊完成轉帳，並保留轉帳紀錄。MUWA 對帳成功後，會寄信到 ${escapeHtml(payload.customerEmail)} 通知你。</p>
+    <div class="bank-card">
+      <span>轉帳銀行</span>
+      <strong>(822) 中國信託</strong>
+      <span>帳號</span>
+      <strong>245540029018</strong>
+      <span>轉帳帳戶末 5 碼</span>
+      <strong>${escapeHtml(payload.transferLast5)}</strong>
+      <span>應付總額</span>
+      <strong>${escapeHtml(formatCompactMoney(payload.total))}</strong>
+    </div>
+    <div class="cart-actions">
+      <button class="button primary" type="button" data-close-order>完成</button>
+    </div>
+  `;
+}
+
+function submitOrderToGoogleScript(endpoint, payload) {
+  return new Promise((resolve, reject) => {
+    const token = `muwa_order_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const iframeName = `${token}_frame`;
+    const timeout = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("訂單送出逾時，請稍後再試，或直接私訊 MUWA。"));
+    }, 20000);
+
+    function cleanup() {
+      window.clearTimeout(timeout);
+      window.removeEventListener("message", handleMessage);
+      form.remove();
+      iframe.remove();
+    }
+
+    function handleMessage(event) {
+      const data = event.data || {};
+      if (data.source !== "muwa-order" || data.token !== token) return;
+      cleanup();
+      if (data.ok) {
+        resolve(data);
+      } else {
+        reject(new Error(data.message || "訂單建立失敗，請稍後再試。"));
+      }
+    }
+
+    const iframe = document.createElement("iframe");
+    iframe.name = iframeName;
+    iframe.hidden = true;
+    document.body.appendChild(iframe);
+
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = endpoint;
+    form.target = iframeName;
+    form.hidden = true;
+
+    Object.entries({
+      action: "createOrder",
+      token,
+      payload: JSON.stringify(payload),
+    }).forEach(([name, value]) => {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = name;
+      input.value = value;
+      form.appendChild(input);
+    });
+
+    window.addEventListener("message", handleMessage);
+    document.body.appendChild(form);
+    form.submit();
+  });
 }
 
 function renderDetailTab(tabName) {
@@ -623,10 +1029,11 @@ function renderDetailTab(tabName) {
   modal.querySelectorAll("[data-tab]").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.tab === tabName);
   });
+  panel.dataset.currentTab = tabName;
 
   const content = {
     description: richTextHtml(product.detailDescription || product.description || "商品介紹準備中。"),
-    shipping: richTextHtml(product.shippingInfo || "MUWA 為小型個人工作室，需溝通設計的商品，請下單後主動聯絡 Line 官方，勿擅自先付款。"),
+    shipping: plainTextHtml(product.shippingInfo || "MUWA 為小型個人工作室，需溝通設計的商品，請下單後主動聯絡 Line 官方，勿擅自先付款。"),
     review: richTextHtml(product.reviewInfo || "評價區準備中。等商品正式累積回饋後，會陸續補上大家的使用心得。"),
   };
 
@@ -649,19 +1056,34 @@ document.addEventListener("click", (event) => {
   if (addCartButton) addActiveProductToCart();
 
   const detailCheckoutButton = event.target.closest("[data-detail-checkout]");
-  if (detailCheckoutButton) openLineCheckout();
+  if (detailCheckoutButton) {
+    if (isCustomProduct(activeProduct)) {
+      openLineCheckout();
+    } else {
+      const addedQty = addActiveProductToCart("set");
+      if (addedQty > 0) openOrderCheckout();
+    }
+  }
 
   const closeCartButton = event.target.closest("[data-close-cart]");
   if (closeCartButton) closeCart();
 
   const checkoutButton = event.target.closest("[data-checkout]");
   if (checkoutButton) {
-    closeCart();
-    openLineCheckout();
+    openOrderCheckout();
   }
 
   const closeLineButton = event.target.closest("[data-close-line]");
   if (closeLineButton) closeLineCheckout();
+
+  const closeOrderButton = event.target.closest("[data-close-order]");
+  if (closeOrderButton) closeOrderCheckout();
+
+  const orderBackButton = event.target.closest("[data-order-back]");
+  if (orderBackButton) {
+    closeOrderCheckout();
+    openCart();
+  }
 
   const cartPlus = event.target.closest("[data-cart-plus]");
   if (cartPlus) {
@@ -726,6 +1148,7 @@ document.addEventListener("click", (event) => {
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
+    closeOrderCheckout();
     closeLineCheckout();
     closeCart();
     closeProductDetail();
