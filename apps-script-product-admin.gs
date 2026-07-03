@@ -371,7 +371,7 @@ function getOrderSheet_() {
 
 function removeOrderStoreAddressColumn_(sheet) {
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const index = headers.indexOf("門市地址");
+  const index = headers.indexOf("\u9580\u5e02\u5730\u5740");
   if (index >= 0) sheet.deleteColumn(index + 1);
 }
 
