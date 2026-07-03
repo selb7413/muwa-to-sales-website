@@ -169,12 +169,11 @@ function createOrder_(payload) {
   const storeChain = String(payload.storeChain || "").trim();
   const storeName = String(payload.storeName || "").trim();
   const storeCode = String(payload.storeCode || "").trim();
-  const storeAddress = String(payload.storeAddress || "").trim();
 
   if (isHome && !homeAddress) {
     throw new Error("請填寫宅配地址。");
   }
-  if (!isHome && (!storeChain || !storeName || !storeCode || !storeAddress)) {
+  if (!isHome && (!storeChain || !storeName || !storeCode)) {
     throw new Error("請完整填寫店到店門市資訊。");
   }
 
@@ -211,7 +210,6 @@ function createOrder_(payload) {
     storeChain,
     storeName,
     storeCode,
-    storeAddress,
     transferLast5,
     itemsText,
     JSON.stringify(normalizedItems),
@@ -341,7 +339,10 @@ function getProductSheet_() {
 function getOrderSheet_() {
   const spreadsheet = SpreadsheetApp.openById(PRODUCT_SHEET_ID);
   let sheet = spreadsheet.getSheetByName(ORDER_SHEET_NAME);
-  if (sheet) return sheet;
+  if (sheet) {
+    removeOrderStoreAddressColumn_(sheet);
+    return sheet;
+  }
 
   sheet = spreadsheet.insertSheet(ORDER_SHEET_NAME);
   sheet.appendRow([
@@ -357,7 +358,6 @@ function getOrderSheet_() {
     "超商",
     "門市名稱",
     "門市店號",
-    "門市地址",
     "轉帳帳戶末5碼",
     "訂單內容",
     "訂單 JSON",
@@ -367,6 +367,12 @@ function getOrderSheet_() {
     "通知狀態",
   ]);
   return sheet;
+}
+
+function removeOrderStoreAddressColumn_(sheet) {
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const index = headers.indexOf("門市地址");
+  if (index >= 0) sheet.deleteColumn(index + 1);
 }
 
 function findProductRow_(sheet, id) {

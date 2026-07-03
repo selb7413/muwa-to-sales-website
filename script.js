@@ -351,21 +351,21 @@ function ensureOrderModal() {
         <form class="order-form" data-order-form>
           <div class="order-grid">
             <label>
-              姓名
+              <span class="field-label">姓名 <span class="required-mark">*</span></span>
               <input type="text" name="customerName" autocomplete="name" required />
             </label>
             <label>
-              手機
+              <span class="field-label">手機 <span class="required-mark">*</span></span>
               <input type="tel" name="customerPhone" autocomplete="tel" required />
             </label>
           </div>
           <label>
-            電子信箱
+            <span class="field-label">電子信箱 <span class="required-mark">*</span></span>
             <input type="email" name="customerEmail" autocomplete="email" required />
           </label>
 
           <fieldset class="shipping-fieldset">
-            <legend>運送方式</legend>
+            <legend>運送方式 <span class="required-mark">*</span></legend>
             <label class="shipping-choice">
               <input type="radio" name="shippingMethod" value="home" checked required />
               <span>宅配 <strong>${formatCompactMoney(SHIPPING_OPTIONS.home.fee)}</strong></span>
@@ -378,7 +378,7 @@ function ensureOrderModal() {
 
           <div class="shipping-fields" data-home-fields>
             <label>
-              宅配地址
+              <span class="field-label">宅配地址 <span class="required-mark">*</span></span>
               <input type="text" name="homeAddress" autocomplete="street-address" required />
             </label>
           </div>
@@ -386,8 +386,8 @@ function ensureOrderModal() {
           <div class="shipping-fields" data-store-fields hidden>
             <div class="order-grid">
               <label>
-                超商
-                <select name="storeChain" disabled>
+                <span class="field-label">超商 <span class="required-mark">*</span></span>
+                <select name="storeChain" disabled required>
                   <option value="7-11">7-11</option>
                   <option value="全家">全家</option>
                   <option value="萊爾富">萊爾富</option>
@@ -398,22 +398,18 @@ function ensureOrderModal() {
             <p class="field-note">請先開啟門市查詢頁，找到門市後把資訊填回下方。</p>
             <div class="order-grid">
               <label>
-                門市名稱
+                <span class="field-label">門市名稱 <span class="required-mark">*</span></span>
                 <input type="text" name="storeName" disabled />
               </label>
               <label>
-                門市店號
+                <span class="field-label">門市店號 <span class="required-mark">*</span></span>
                 <input type="text" name="storeCode" disabled />
               </label>
             </div>
-            <label>
-              門市地址
-              <input type="text" name="storeAddress" disabled />
-            </label>
           </div>
 
           <label>
-            轉帳帳戶末 5 碼
+            <span class="field-label">轉帳帳戶末 5 碼(請先填寫，匯款後會依此5碼對帳) <span class="required-mark">*</span></span>
             <input type="text" name="transferLast5" inputmode="numeric" pattern="\\d{5}" maxlength="5" placeholder="例如：90123" required />
           </label>
 
@@ -839,7 +835,7 @@ function updateOrderShippingFields() {
   });
   storeInputs.forEach((input) => {
     input.disabled = method !== "store";
-    input.required = method === "store" && input.tagName !== "SELECT";
+    input.required = method === "store";
   });
   updateStoreLookupLink();
   updateOrderTotal();
@@ -896,7 +892,6 @@ function buildOrderPayload(form) {
     storeChain,
     storeName: String(data.get("storeName") || "").trim(),
     storeCode: String(data.get("storeCode") || "").trim(),
-    storeAddress: String(data.get("storeAddress") || "").trim(),
     transferLast5: String(data.get("transferLast5") || "").trim(),
     items,
     itemSubtotal: subtotal,
@@ -938,16 +933,29 @@ async function submitOrderForm(event) {
   }
 }
 
+function hasCustomOrderItems(payload) {
+  const items = Array.isArray(payload.items) ? payload.items : [];
+  return items.some((item) => {
+    const text = `${item.productName || ""} ${item.optionName || ""}`;
+    return text.includes("客製") || text.includes("客制") || text.includes("訂製") || text.includes("訂制");
+  });
+}
+
 function renderOrderSuccess(result, payload) {
   const modal = ensureOrderModal();
   const orderId = result.orderId || "訂單已送出";
+  const hasCustomItems = hasCustomOrderItems(payload);
   modal.querySelector("[data-order-form-view]").hidden = true;
   const success = modal.querySelector("[data-order-success]");
   success.hidden = false;
   success.innerHTML = `
+    <div class="success-check" aria-hidden="true">✓</div>
     <p class="section-kicker">訂單已建立</p>
-    <h2>${escapeHtml(orderId)}</h2>
-    <p>請依照下方資訊完成轉帳，並保留轉帳紀錄。MUWA 對帳成功後，會寄信到 ${escapeHtml(payload.customerEmail)} 通知你。</p>
+    <h2>建立訂單編號${escapeHtml(orderId)}</h2>
+    <p>${hasCustomItems
+      ? "因有客製商品，請先連絡官方LINE確認設計後再進行匯款，對帳成功會收到muwa.to.sales@gmail.com告知的信件。"
+      : "對帳成功會收到muwa.to.sales@gmail.com告知的信件。"}</p>
+    ${hasCustomItems ? '<img class="success-line-qr" src="./assets/line-qr.jpg" alt="MUWA 官方 LINE QR Code" />' : ""}
     <div class="bank-card">
       <span>轉帳銀行</span>
       <strong>(822) 中國信託</strong>
