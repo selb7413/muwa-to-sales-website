@@ -274,8 +274,7 @@ function ensureProductModal() {
         <div class="purchase-total"><span>共計</span><strong data-detail-total>NT$ 0</strong></div>
         <p class="cart-message" data-cart-message aria-live="polite"></p>
         <div class="detail-actions">
-          <button class="button secondary detail-cart" type="button" data-add-cart>加到購物車</button>
-          <button class="button primary" type="button" data-detail-checkout>結帳</button>
+          <button class="button primary detail-cart" type="button" data-add-cart>加到購物車</button>
         </div>
       </div>
       <div class="detail-tabs">
@@ -763,11 +762,6 @@ function openOrderCheckout() {
     return;
   }
 
-  if (items.some(isCustomProduct)) {
-    openLineCheckout();
-    return;
-  }
-
   const modal = ensureOrderModal();
   renderOrderForm();
   closeCart();
@@ -945,17 +939,7 @@ function renderOrderSuccess(result, payload) {
   const modal = ensureOrderModal();
   const orderId = result.orderId || "訂單已送出";
   const hasCustomItems = hasCustomOrderItems(payload);
-  modal.querySelector("[data-order-form-view]").hidden = true;
-  const success = modal.querySelector("[data-order-success]");
-  success.hidden = false;
-  success.innerHTML = `
-    <div class="success-check" aria-hidden="true">✓</div>
-    <p class="section-kicker">訂單已建立</p>
-    <h2>建立訂單編號${escapeHtml(orderId)}</h2>
-    <p>${hasCustomItems
-      ? "因有客製商品，請先連絡官方LINE確認設計後再進行匯款，對帳成功會收到muwa.to.sales@gmail.com告知的信件。"
-      : "對帳成功會收到muwa.to.sales@gmail.com告知的信件。"}</p>
-    ${hasCustomItems ? '<img class="success-line-qr" src="./assets/line-qr.jpg" alt="MUWA 官方 LINE QR Code" />' : ""}
+  const bankCard = `
     <div class="bank-card">
       <span>轉帳銀行</span>
       <strong>(822) 中國信託</strong>
@@ -966,6 +950,19 @@ function renderOrderSuccess(result, payload) {
       <span>應付總額</span>
       <strong>${escapeHtml(formatCompactMoney(payload.total))}</strong>
     </div>
+  `;
+  modal.querySelector("[data-order-form-view]").hidden = true;
+  const success = modal.querySelector("[data-order-success]");
+  success.hidden = false;
+  success.innerHTML = `
+    ${hasCustomItems ? "" : '<div class="success-check" aria-hidden="true">✓</div>'}
+    <p class="section-kicker">訂單已建立</p>
+    <h2>建立訂單編號${escapeHtml(orderId)}</h2>
+    <p>${hasCustomItems
+      ? "因有客製商品，請先連絡官方LINE確認設計後再進行匯款。"
+      : "對帳成功會收到muwa.to.sales@gmail.com告知的信件。"}</p>
+    ${hasCustomItems ? '<img class="success-line-qr" src="./assets/line-qr.jpg" alt="MUWA 官方 LINE QR Code" />' : ""}
+    ${hasCustomItems ? "" : bankCard}
     <div class="cart-actions">
       <button class="button primary" type="button" data-close-order>完成</button>
     </div>
@@ -975,7 +972,8 @@ function renderOrderSuccess(result, payload) {
 function submitOrderToGoogleScript(endpoint, payload) {
   return new Promise((resolve, reject) => {
     const token = `muwa_order_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const iframeName = `${token}_frame`;
+    const callbackName = `muwaOrderCallback_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const script = document.createElement("script");
     const timeout = window.setTimeout(() => {
       cleanup();
       reject(new Error("訂單送出逾時，請稍後再試，或直接私訊 MUWA。"));
@@ -983,13 +981,11 @@ function submitOrderToGoogleScript(endpoint, payload) {
 
     function cleanup() {
       window.clearTimeout(timeout);
-      window.removeEventListener("message", handleMessage);
-      form.remove();
-      iframe.remove();
+      delete window[callbackName];
+      script.remove();
     }
 
-    function handleMessage(event) {
-      const data = event.data || {};
+    window[callbackName] = (data) => {
       if (data.source !== "muwa-order" || data.token !== token) return;
       cleanup();
       if (data.ok) {
@@ -997,34 +993,20 @@ function submitOrderToGoogleScript(endpoint, payload) {
       } else {
         reject(new Error(data.message || "訂單建立失敗，請稍後再試。"));
       }
-    }
+    };
 
-    const iframe = document.createElement("iframe");
-    iframe.name = iframeName;
-    iframe.hidden = true;
-    document.body.appendChild(iframe);
+    const url = new URL(endpoint);
+    url.searchParams.set("action", "createOrder");
+    url.searchParams.set("token", token);
+    url.searchParams.set("callback", callbackName);
+    url.searchParams.set("payload", JSON.stringify(payload));
 
-    const form = document.createElement("form");
-    form.method = "POST";
-    form.action = endpoint;
-    form.target = iframeName;
-    form.hidden = true;
-
-    Object.entries({
-      action: "createOrder",
-      token,
-      payload: JSON.stringify(payload),
-    }).forEach(([name, value]) => {
-      const input = document.createElement("input");
-      input.type = "hidden";
-      input.name = name;
-      input.value = value;
-      form.appendChild(input);
-    });
-
-    window.addEventListener("message", handleMessage);
-    document.body.appendChild(form);
-    form.submit();
+    script.src = url.toString();
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("訂單送出失敗，請稍後再試，或直接私訊 MUWA。"));
+    };
+    document.body.appendChild(script);
   });
 }
 
@@ -1062,16 +1044,6 @@ document.addEventListener("click", (event) => {
 
   const addCartButton = event.target.closest("[data-add-cart]");
   if (addCartButton) addActiveProductToCart();
-
-  const detailCheckoutButton = event.target.closest("[data-detail-checkout]");
-  if (detailCheckoutButton) {
-    if (isCustomProduct(activeProduct)) {
-      openLineCheckout();
-    } else {
-      const addedQty = addActiveProductToCart("set");
-      if (addedQty > 0) openOrderCheckout();
-    }
-  }
 
   const closeCartButton = event.target.closest("[data-close-cart]");
   if (closeCartButton) closeCart();

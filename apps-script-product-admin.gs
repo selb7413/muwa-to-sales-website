@@ -10,6 +10,9 @@ function doGet(e) {
   if (action === "products") {
     return outputProducts_(e);
   }
+  if (action === "createOrder") {
+    return outputOrderResult_(e);
+  }
 
   return HtmlService
     .createTemplateFromFile("product-admin")
@@ -37,6 +40,23 @@ function doPost(e) {
   }
 
   return outputPostMessage_({ ok: false, token, message: "未知的送出動作。" });
+}
+
+function outputOrderResult_(e) {
+  const token = e.parameter.token || "";
+  const callback = e.parameter.callback || "";
+
+  try {
+    const payload = JSON.parse(e.parameter.payload || "{}");
+    const result = createOrder_(payload);
+    return outputCallback_(callback, Object.assign({ ok: true, token }, result));
+  } catch (error) {
+    return outputCallback_(callback, {
+      ok: false,
+      token,
+      message: error && error.message ? error.message : "訂單建立失敗，請稍後再試。",
+    });
+  }
 }
 
 function getProducts() {
@@ -422,4 +442,21 @@ function outputPostMessage_(payload) {
   return HtmlService
     .createHtmlOutput(`<script>parent.postMessage(${body}, "*");</script>`)
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function outputCallback_(callback, payload) {
+  const body = JSON.stringify(Object.assign({ source: "muwa-order" }, payload))
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026");
+
+  if (callback) {
+    return ContentService
+      .createTextOutput(`${callback}(${body});`)
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+
+  return ContentService
+    .createTextOutput(body)
+    .setMimeType(ContentService.MimeType.JSON);
 }
