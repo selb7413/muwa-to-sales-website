@@ -166,6 +166,7 @@ function getProductImages(product) {
 
 function renderEmptyProducts() {
   if (!productGrid) return;
+  renderProductFilters([]);
 
   productGrid.innerHTML = `
     <div class="empty-products">
@@ -192,6 +193,8 @@ function renderProductList(products) {
     return;
   }
 
+  renderProductFilters(productStore);
+
   productGrid.innerHTML = productStore
     .map((product, index) => {
       const image = product.images[0]
@@ -201,15 +204,17 @@ function renderProductList(products) {
       const price = priceLabel ? `<strong>${escapeHtml(priceLabel)}</strong>` : "";
 
       return `
-        <article class="product-card">
+        <article class="product-card" data-product-category="${escapeHtml(product.category || "全部")}">
           <button class="product-open" type="button" data-product-index="${index}" aria-label="查看 ${escapeHtml(product.name)} 商品詳情">
             <div class="product-visual ${product.images[0] ? "has-image" : "visual-bowl"}" aria-hidden="${product.images[0] ? "false" : "true"}">
+              <span class="product-category-badge">${escapeHtml(product.category || "全部")}</span>
               ${image}
             </div>
             <div class="product-copy">
-              <p>${escapeHtml(product.category || "全部")}</p>
-              <h3>${escapeHtml(product.name)}</h3>
-              <span>${escapeHtml(product.description)}</span>
+              <div class="product-copy-main">
+                <h3>${escapeHtml(product.name)}</h3>
+                <span>${escapeHtml(product.description)}</span>
+              </div>
               <div class="product-meta">
                 ${price}
                 <span class="product-detail-pill">查看詳情</span>
@@ -220,6 +225,38 @@ function renderProductList(products) {
       `;
     })
     .join("");
+}
+
+function renderProductFilters(products) {
+  const filterRow = document.querySelector(".filter-row");
+  if (!filterRow) return;
+
+  const categories = [
+    ...new Set(
+      products
+        .map((product) => String(product.category || "").trim())
+        .filter((category) => category && category !== "全部")
+    ),
+  ];
+
+  filterRow.innerHTML = [
+    `<button class="filter-button is-active" data-filter="all" type="button">全部</button>`,
+    ...categories.map(
+      (category) =>
+        `<button class="filter-button" data-filter="${escapeHtml(category)}" type="button">${escapeHtml(category)}</button>`
+    ),
+  ].join("");
+}
+
+function applyProductFilter(filterValue) {
+  const value = String(filterValue || "all");
+  document.querySelectorAll(".filter-button").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.filter === value);
+  });
+  document.querySelectorAll(".product-card").forEach((card) => {
+    const category = card.dataset.productCategory || "";
+    card.classList.toggle("is-hidden", value !== "all" && category !== value);
+  });
 }
 
 function loadProductFeed() {
@@ -1039,6 +1076,12 @@ if (productGrid) {
 }
 
 document.addEventListener("click", (event) => {
+  const filterButton = event.target.closest("[data-filter]");
+  if (filterButton) {
+    applyProductFilter(filterButton.dataset.filter);
+    return;
+  }
+
   const closeButton = event.target.closest("[data-close-detail]");
   if (closeButton) closeProductDetail();
 
