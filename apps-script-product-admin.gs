@@ -1,7 +1,10 @@
 const PRODUCT_SHEET_ID = "1-_Tv649zg_o9ABnKAE7_xbFYIAdxJILD5S1JjHMlE90";
-const PRODUCT_SHEET_NAME = "MUWA 商品資料表";
+const PRODUCT_SHEET_NAME = "MUWA後台";
+const LEGACY_PRODUCT_SHEET_NAME = "MUWA 商品資料表";
 const ORDER_SHEET_NAME = "MUWA 訂單資料表";
+const WISHLIST_SHEET_NAME = "MUWA 商品許願池收件表";
 const PRODUCT_IMAGE_FOLDER_NAME = "MUWA 商品圖片";
+const WISHLIST_IMAGE_FOLDER_NAME = "MUWA 許願池圖片";
 const ADMIN_USER = "muwa.to.sales";
 const ADMIN_KEY = "cindy31127";
 
@@ -39,6 +42,19 @@ function doPost(e) {
     }
   }
 
+  if (action === "wishlist") {
+    try {
+      const result = createWishlist_(e.parameter);
+      return outputPostMessage_(Object.assign({ ok: true, token }, result));
+    } catch (error) {
+      return outputPostMessage_({
+        ok: false,
+        token,
+        message: error && error.message ? error.message : "許願送出失敗，請稍後再試。",
+      });
+    }
+  }
+
   return outputPostMessage_({ ok: false, token, message: "未知的送出動作。" });
 }
 
@@ -61,6 +77,13 @@ function outputOrderResult_(e) {
 
 function getProducts() {
   return readProducts_();
+}
+
+function setupWorkbook() {
+  getProductSheet_();
+  getOrderSheet_();
+  getWishlistSheet_();
+  return { ok: true };
 }
 
 function saveProduct(payload) {
@@ -232,7 +255,6 @@ function createOrder_(payload) {
     storeCode,
     transferLast5,
     itemsText,
-    JSON.stringify(normalizedItems),
     itemSubtotal,
     total,
     "",
@@ -240,6 +262,32 @@ function createOrder_(payload) {
   ]);
 
   return { orderId, total, shippingFee, itemSubtotal };
+}
+
+function createWishlist_(payload) {
+  const sheet = getWishlistSheet_();
+  const wishTitle = String(payload.wishTitle || "").trim();
+  const wishDetail = String(payload.wishDetail || "").trim();
+  const imageName = String(payload.imageName || "").trim();
+  const imageData = String(payload.imageData || "").trim();
+
+  if (!wishTitle && !wishDetail) {
+    throw new Error("請填寫想許願的商品或情境。");
+  }
+
+  const imageUrl = imageData ? saveWishlistImage_(imageData, imageName || `muwa-wish-${Date.now()}.png`) : "";
+
+  sheet.appendRow([
+    new Date(),
+    wishTitle,
+    wishDetail,
+    imageName,
+    imageUrl,
+    "新許願",
+    "",
+  ]);
+
+  return { imageUrl };
 }
 
 function generateOrderId_(sheet) {
@@ -352,20 +400,89 @@ function getImageFolder_() {
   return DriveApp.createFolder(PRODUCT_IMAGE_FOLDER_NAME);
 }
 
+function saveWishlistImage_(dataUrl, fileName) {
+  const folder = getWishlistImageFolder_();
+  const match = String(dataUrl).match(/^data:(.+);base64,(.+)$/);
+  if (!match) return "";
+
+  const mimeType = match[1];
+  const bytes = Utilities.base64Decode(match[2]);
+  const safeName = `${Date.now()}-${String(fileName || "muwa-wish.png").replace(/[\\/:*?"<>|]/g, "-")}`;
+  const blob = Utilities.newBlob(bytes, mimeType, safeName);
+  const file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+  return file.getUrl();
+}
+
+function getWishlistImageFolder_() {
+  const folders = DriveApp.getFoldersByName(WISHLIST_IMAGE_FOLDER_NAME);
+  if (folders.hasNext()) return folders.next();
+  return DriveApp.createFolder(WISHLIST_IMAGE_FOLDER_NAME);
+}
+
 function getProductSheet_() {
-  return SpreadsheetApp.openById(PRODUCT_SHEET_ID).getSheetByName(PRODUCT_SHEET_NAME);
+  const spreadsheet = SpreadsheetApp.openById(PRODUCT_SHEET_ID);
+  let sheet = spreadsheet.getSheetByName(PRODUCT_SHEET_NAME);
+  if (!sheet) {
+    sheet = spreadsheet.getSheetByName(LEGACY_PRODUCT_SHEET_NAME);
+    if (sheet) sheet.setName(PRODUCT_SHEET_NAME);
+  }
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(PRODUCT_SHEET_NAME);
+    sheet.appendRow(getProductHeaders_());
+  }
+  return sheet;
 }
 
 function getOrderSheet_() {
   const spreadsheet = SpreadsheetApp.openById(PRODUCT_SHEET_ID);
   let sheet = spreadsheet.getSheetByName(ORDER_SHEET_NAME);
   if (sheet) {
-    removeOrderStoreAddressColumn_(sheet);
+    removeColumnsByHeaders_(sheet, ["門市地址", "訂單 JSON"]);
     return sheet;
   }
 
   sheet = spreadsheet.insertSheet(ORDER_SHEET_NAME);
-  sheet.appendRow([
+  sheet.appendRow(getOrderHeaders_());
+  return sheet;
+}
+
+function getWishlistSheet_() {
+  const spreadsheet = SpreadsheetApp.openById(PRODUCT_SHEET_ID);
+  let sheet = spreadsheet.getSheetByName(WISHLIST_SHEET_NAME);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(WISHLIST_SHEET_NAME);
+    sheet.appendRow(getWishlistHeaders_());
+  }
+  removeColumnsByHeaders_(sheet, ["使用者裝置資訊", "頁面來源"]);
+  return sheet;
+}
+
+function getProductHeaders_() {
+  return [
+    "ID",
+    "狀態",
+    "商品名稱",
+    "分類",
+    "價格",
+    "短描述",
+    "圖片",
+    "購買連結",
+    "排序",
+    "建立時間",
+    "更新時間",
+    "商品描述",
+    "送貨及付款方式",
+    "顧客評價",
+    "圖片位置",
+    "圖片縮放",
+    "購買品項",
+  ];
+}
+
+function getOrderHeaders_() {
+  return [
     "建立時間",
     "訂單編號",
     "狀態",
@@ -380,19 +497,32 @@ function getOrderSheet_() {
     "門市店號",
     "轉帳帳戶末5碼",
     "訂單內容",
-    "訂單 JSON",
     "商品小計",
     "應付總額",
     "對帳時間",
     "通知狀態",
-  ]);
-  return sheet;
+  ];
 }
 
-function removeOrderStoreAddressColumn_(sheet) {
+function getWishlistHeaders_() {
+  return [
+    "建立時間",
+    "許願商品或情境",
+    "想法內容",
+    "圖片檔名",
+    "圖片連結",
+    "狀態",
+    "備註",
+  ];
+}
+
+function removeColumnsByHeaders_(sheet, headersToRemove) {
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const index = headers.indexOf("\u9580\u5e02\u5730\u5740");
-  if (index >= 0) sheet.deleteColumn(index + 1);
+  for (let index = headers.length - 1; index >= 0; index -= 1) {
+    if (headersToRemove.indexOf(String(headers[index])) >= 0) {
+      sheet.deleteColumn(index + 1);
+    }
+  }
 }
 
 function findProductRow_(sheet, id) {

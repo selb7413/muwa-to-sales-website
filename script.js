@@ -51,6 +51,8 @@ const STORE_LOOKUP_LINKS = {
   "萊爾富": "https://www.hilife.com.tw/filter",
 };
 
+const PRODUCT_CACHE_KEY = "muwa-products-cache-v1";
+
 function normalizePurchaseOption(item) {
   return {
     name: String(item?.name || "").trim(),
@@ -176,6 +178,41 @@ function renderEmptyProducts() {
   `;
 }
 
+function renderProductLoading() {
+  if (!productGrid) return;
+  renderProductFilters([]);
+
+  productGrid.innerHTML = `
+    <div class="empty-products">
+      <h3>載入中~請稍後~</h3>
+      <p>正在讀取最新上架商品。</p>
+    </div>
+  `;
+}
+
+function readCachedProducts() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(PRODUCT_CACHE_KEY) || "null");
+    return Array.isArray(cached?.products) ? cached.products : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeCachedProducts(products) {
+  try {
+    localStorage.setItem(
+      PRODUCT_CACHE_KEY,
+      JSON.stringify({
+        updatedAt: Date.now(),
+        products,
+      })
+    );
+  } catch {
+    // Cache is only for faster first paint; ignore storage failures.
+  }
+}
+
 function renderProductList(products) {
   if (!productGrid) return;
 
@@ -266,18 +303,27 @@ function loadProductFeed() {
     return;
   }
 
+  const cachedProducts = readCachedProducts();
+  if (cachedProducts.length) {
+    renderProductList(cachedProducts);
+  } else {
+    renderProductLoading();
+  }
+
   const callbackName = `muwaProducts_${Date.now()}`;
   const script = document.createElement("script");
   const separator = feedUrl.includes("?") ? "&" : "?";
 
   window[callbackName] = (payload) => {
-    renderProductList(payload.products || []);
+    const products = Array.isArray(payload.products) ? payload.products : [];
+    if (products.length) writeCachedProducts(products);
+    renderProductList(products);
     delete window[callbackName];
     script.remove();
   };
 
   script.onerror = () => {
-    renderEmptyProducts();
+    if (!cachedProducts.length) renderEmptyProducts();
     delete window[callbackName];
     script.remove();
   };
@@ -1198,17 +1244,29 @@ if (wishlistForm) {
     message.textContent = "送出中...";
 
     try {
+      const imageData = image && image.name ? await readFileAsDataUrl(image) : "";
       submitToGoogleScript(endpoint, {
+        action: "wishlist",
         wishTitle: title,
         wishDetail,
         imageName: image && image.name ? image.name : "",
+        imageData,
       });
 
       wishlistForm.reset();
-      message.textContent = `${title} 已送出${imageNote}。請到 Google Sheet 確認是否新增資料。`;
+      message.textContent = `${title} 已送出${imageNote}。請到 MUWA後台 的許願池分頁確認資料。`;
     } catch {
       message.textContent = "送出失敗，請稍後再試，或直接來信 muwa.to.sales@gmail.com。";
     }
+  });
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
   });
 }
 
