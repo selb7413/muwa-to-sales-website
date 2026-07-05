@@ -1750,6 +1750,58 @@ details p {
   box-shadow: 12px 12px 0 var(--ink);
 }
 
+.contact-card {
+  display: grid;
+  gap: 14px;
+}
+
+.contact-link,
+.line-qr-card {
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  background: #fffaf0;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 6px 6px 0 var(--blue);
+}
+
+.contact-link {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.contact-link span,
+.line-qr-card span {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.contact-link strong,
+.line-qr-card strong {
+  color: var(--ink);
+  font-size: clamp(18px, 2vw, 24px);
+  line-height: 1.25;
+}
+
+.line-qr-card {
+  grid-template-columns: minmax(0, 1fr) 132px;
+  align-items: center;
+  background: #f3e4cd;
+}
+
+.line-qr-card img {
+  width: 132px;
+  aspect-ratio: 1;
+  object-fit: contain;
+  justify-self: end;
+  padding: 8px;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+}
+
 .interest-form {
   display: grid;
   gap: 16px;
@@ -2023,6 +2075,21 @@ input[type="file"] {
 
   .order-flow-card {
     padding: 18px;
+  }
+
+  .order-card {
+    padding: 24px 18px;
+  }
+
+  .line-qr-card {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .line-qr-card img {
+    width: min(180px, 70vw);
+    justify-self: center;
   }
 
   .flow-quick-steps {
