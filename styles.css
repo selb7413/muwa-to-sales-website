@@ -1798,18 +1798,29 @@ details p {
   background: #f3e4cd;
 }
 
-.line-qr-card img {
+.line-qr-code {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  min-width: 0;
+}
+
+.line-qr-code img {
   width: 132px;
   max-width: 100%;
   height: auto;
   aspect-ratio: 1;
   display: block;
   object-fit: contain;
-  justify-self: end;
   padding: 8px;
   background: #fff;
   border: 3px solid var(--ink);
   border-radius: 10px;
+}
+
+.line-qr-code strong {
+  font-size: 16px;
+  line-height: 1;
 }
 
 .interest-form {
@@ -2097,9 +2108,8 @@ input[type="file"] {
     text-align: center;
   }
 
-  .line-qr-card img {
+  .line-qr-code img {
     width: min(180px, 70vw);
-    justify-self: center;
   }
 
   .flow-quick-steps {
