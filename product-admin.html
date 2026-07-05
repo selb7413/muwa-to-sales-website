@@ -226,6 +226,24 @@
         max-width: 1160px;
         margin: 0 auto;
       }
+      .empty-products {
+        grid-column: 1 / -1;
+        padding: 28px;
+        background: var(--paper);
+        border: 4px solid var(--ink);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        text-align: center;
+      }
+      .empty-products h3 {
+        margin-bottom: 8px;
+        font-size: 28px;
+      }
+      .empty-products p {
+        color: var(--muted);
+        font-weight: 850;
+        line-height: 1.7;
+      }
       .product-card { overflow: hidden; }
       .product-visual {
         position: relative;
@@ -381,6 +399,11 @@
         justify-content: center;
         padding-top: 6px;
       }
+      .save-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
       .save-status-pill {
         min-height: 44px;
         display: inline-flex;
@@ -411,6 +434,40 @@
         color: var(--ink);
         font-size: 12px;
         font-weight: 950;
+      }
+      .preview-state-bar {
+        grid-column: 1 / -1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        background: #fff3df;
+        border: 3px solid var(--ink);
+        border-radius: var(--radius);
+        box-shadow: 5px 5px 0 var(--blue);
+        color: var(--ink);
+        font-size: 14px;
+        font-weight: 950;
+      }
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        padding: 6px 10px;
+        background: var(--blue);
+        border: 3px solid var(--ink);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 950;
+        box-shadow: 4px 4px 0 var(--ink);
+      }
+      .status-pill.is-draft {
+        background: var(--orange);
+      }
+      .status-pill.is-hidden {
+        background: #635e56;
       }
 
       .detail-panel {
@@ -578,6 +635,7 @@
         .admin-bar, .site-header { align-items: flex-start; flex-direction: column; }
         .product-grid { grid-template-columns: 1fr; }
         .field-row, .image-controls, .tabs, .purchase-editor-row, .addon-editor-row, .purchase-line, .addon-option-row { grid-template-columns: 1fr; }
+        .save-actions { grid-template-columns: 1fr; }
         .item { grid-template-columns: 72px minmax(0, 1fr); }
         .item button { grid-column: 1 / -1; }
       }
@@ -640,8 +698,8 @@
               <label>價格數字 <input name="price" type="number" min="0" inputmode="numeric" placeholder="例如：2400" /></label>
               <label>狀態
                 <select name="status">
-                  <option>上架</option>
                   <option>草稿</option>
+                  <option>上架</option>
                   <option>售完</option>
                   <option>補貨中</option>
                 </select>
@@ -670,7 +728,10 @@
               <label>圖片垂直位置 <input name="imageY" type="range" min="0" max="100" value="50" /></label>
               <input class="hidden" name="imageScale" type="range" min="100" max="180" value="100" />
             </div>
-            <button class="button" type="submit">儲存並上架</button>
+            <div class="save-actions">
+              <button class="button secondary" type="submit" data-save-status="草稿">儲存草稿</button>
+              <button class="button" type="submit" data-save-status="上架">正式上架</button>
+            </div>
             <p class="message" id="message"></p>
           </form>
 
@@ -681,7 +742,8 @@
             </div>
             <div class="detail-panel" id="detailPreview"></div>
             <div class="preview-save-row">
-              <button class="button" type="submit" form="productForm">儲存並上架</button>
+              <button class="button secondary" type="submit" form="productForm" data-save-status="草稿">儲存草稿</button>
+              <button class="button" type="submit" form="productForm" data-save-status="上架">正式上架</button>
               <p class="message save-status-pill" id="previewMessage">尚未儲存</p>
             </div>
           </div>
@@ -689,7 +751,7 @@
       </section>
 
       <section class="product-section" id="products">
-        <p class="section-kicker">已上架商品</p>
+        <p class="section-kicker">前台目前可見商品</p>
         <div class="product-grid" id="productGrid"></div>
       </section>
 
@@ -832,6 +894,18 @@
         const min = Math.min(...prices);
         const max = Math.max(...prices);
         return min === max ? formatCompactMoney(min) : `${formatCompactMoney(min)}~${formatCompactMoney(max)}`;
+      }
+
+      function statusClass(status) {
+        if (status === "上架") return "";
+        if (status === "草稿") return "is-draft";
+        return "is-hidden";
+      }
+
+      function statusHelpText(status) {
+        if (status === "上架") return "目前顧客可以在前台看到這個商品。";
+        if (status === "草稿") return "草稿預覽中，顧客目前看不到。";
+        return "此狀態不會顯示在前台。";
       }
 
       function previewPurchaseRows(options, fallbackName, fallbackPrice) {
@@ -1095,6 +1169,7 @@
           price: formatPrice(data.get("price")),
           priceLabel: formatPriceRange(purchaseOptions, data.get("price")),
           purchaseOptions,
+          status: data.get("status") || "草稿",
           description: data.get("description") || "這裡會顯示商品短描述。",
           detailDescription: data.get("detailDescription") || data.get("description") || "商品完整介紹會顯示在這裡。",
           shippingInfo: data.get("shippingInfo") || "MUWA 為小型個人工作室，需溝通設計的商品，請下單後主動聯絡 Line 官方。",
@@ -1143,6 +1218,10 @@
           </div>
         `;
         detailPreview.innerHTML = `
+          <div class="preview-state-bar">
+            <span class="status-pill ${statusClass(state.status)}">${escapeHtml(state.status)}</span>
+            <span>${escapeHtml(statusHelpText(state.status))}</span>
+          </div>
           <div class="detail-preview-head">
             <span class="drag-hint">${image ? "這裡是商品詳情大圖，也可以直接拖曳調整位置" : "商品詳情大圖預覽"}</span>
             <label class="preview-scale-control">圖片縮放 <input data-preview-scale type="range" min="100" max="180" value="${productForm.imageScale.value || 100}" /></label>
@@ -1224,6 +1303,11 @@
         }
       });
 
+      productForm.status.addEventListener("change", () => {
+        updatePreview();
+        setSaveMessage("已修改狀態，尚未儲存。");
+      });
+
       function loadProducts() {
         if (!isGoogleRuntime()) {
           list.innerHTML = "<p>這裡是本機預覽。正式新增商品時，請用 Google Apps Script 部署後的 Web App URL 開啟。</p>";
@@ -1247,17 +1331,21 @@
           productGrid.innerHTML = "";
           return;
         }
-        productGrid.innerHTML = products.map((item) => renderProductCard(item)).join("");
+        const publishedProducts = products.filter((item) => item.status === "上架");
+        productGrid.innerHTML = publishedProducts.length
+          ? publishedProducts.map((item) => renderProductCard(item)).join("")
+          : "<div class=\"empty-products\"><h3>目前沒有正式上架商品</h3><p>草稿不會顯示在前台，確認滿意後再按「正式上架」。</p></div>";
         list.innerHTML = products.map((item) => `
           <article class="item">
             ${item.image ? `<img src="${item.image}" alt="">` : `<div class="thumb">MUWA</div>`}
             <div>
-              <p>${item.status} / ${item.category} / ${formatPriceRange(parsePurchaseOptions(item.purchaseOptions, item.name), item.price)}</p>
+              <p><span class="status-pill ${statusClass(item.status)}">${escapeHtml(item.status || "草稿")}</span> ${escapeHtml(item.category)} / ${formatPriceRange(parsePurchaseOptions(item.purchaseOptions, item.name), item.price)}</p>
               <h3>${item.name}</h3>
               <p>${item.description}</p>
             </div>
             <div class="item-actions">
-              <button class="button small" type="button" data-edit-id="${item.id}">編輯</button>
+              <button class="button small" type="button" data-edit-id="${item.id}">編輯 / 預覽</button>
+              ${item.status === "上架" ? "" : `<button class="button small" type="button" data-publish-id="${item.id}">正式上架</button>`}
               <button class="button blue small" type="button" data-delete-id="${item.id}">刪除</button>
             </div>
           </article>
@@ -1280,18 +1368,11 @@
         `;
       }
 
-      productForm.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        if (!isGoogleRuntime()) {
-          setSaveMessage("本機預覽不能儲存商品。請到正式 Apps Script 後台操作。", "is-error");
-          return;
-        }
-
-        setSaveMessage("儲存中，請稍等...", "is-saving");
+      function buildProductPayload(statusOverride = "") {
         const data = new FormData(productForm);
         const existingImages = previewImages.filter((item) => item.existing).map((item) => item.url || item.src);
         const newImages = previewImages.filter((item) => !item.existing);
-        const payload = {
+        return {
           id: editingProductId,
           adminUser,
           adminKey,
@@ -1299,7 +1380,7 @@
           category: data.get("category"),
           price: data.get("price"),
           purchaseOptions: data.get("purchaseOptions"),
-          status: data.get("status"),
+          status: statusOverride || data.get("status") || "草稿",
           sort: data.get("sort"),
           description: data.get("description"),
           detailDescription: data.get("detailDescription"),
@@ -1312,20 +1393,37 @@
           imageNames: newImages.map((item) => item.name || "muwa-product.png"),
           imagesData: newImages.map((item) => item.src),
         };
+      }
 
+      function saveProductPayload(payload, successMessage = "") {
         google.script.run
           .withSuccessHandler(() => {
-            const imageX = data.get("imageX") || 50;
-            const imageY = data.get("imageY") || 50;
-            const imageScale = data.get("imageScale") || 100;
-            const action = editingProductId ? "商品已更新" : "商品已新增";
-            setSaveMessage(`${action}。已儲存圖片位置：水平 ${imageX}% / 垂直 ${imageY}% / 縮放 ${imageScale}%。`, "is-success");
+            productForm.status.value = payload.status || "草稿";
+            const [imageX = 50, imageY = 50] = String(payload.imagePosition || "50% 50%").split(" ");
+            const imageScale = Math.round(Number(payload.imageScale || 1) * 100) || 100;
+            const statusText = payload.status === "上架" ? "已正式上架，前台可見。" : "已儲存草稿，前台不會顯示。";
+            setSaveMessage(successMessage || `${statusText} 已儲存圖片位置：水平 ${imageX} / 垂直 ${imageY} / 縮放 ${imageScale}%。`, "is-success");
             loadProducts();
           })
           .withFailureHandler((error) => {
             setSaveMessage(`儲存失敗：${error.message}`, "is-error");
           })
-            .saveProduct(payload);
+          .saveProduct(payload);
+      }
+
+      productForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!isGoogleRuntime()) {
+          setSaveMessage("本機預覽不能儲存商品。請到正式 Apps Script 後台操作。", "is-error");
+          return;
+        }
+
+        const statusOverride = event.submitter?.dataset?.saveStatus || "";
+        if (statusOverride) productForm.status.value = statusOverride;
+        setSaveMessage(statusOverride === "上架" ? "正在正式上架，請稍等..." : "正在儲存草稿，請稍等...", "is-saving");
+        const payload = buildProductPayload(statusOverride);
+
+        saveProductPayload(payload);
       });
 
       function applyImagePositionFromPointer(event, target) {
@@ -1378,6 +1476,40 @@
           return;
         }
 
+        const publishButton = event.target.closest("[data-publish-id]");
+        if (publishButton) {
+          if (!isGoogleRuntime()) {
+            setSaveMessage("本機預覽不能正式上架。請到正式 Apps Script 後台操作。", "is-error");
+            return;
+          }
+          const item = currentProducts.find((product) => String(product.id) === String(publishButton.dataset.publishId));
+          if (!item) return;
+          publishButton.disabled = true;
+          setSaveMessage(`正在正式上架：${item.name}`, "is-saving");
+          saveProductPayload({
+            id: item.id,
+            adminUser,
+            adminKey,
+            name: item.name,
+            category: item.category,
+            price: item.price,
+            purchaseOptions: item.purchaseOptions,
+            status: "上架",
+            sort: item.sort || 999,
+            description: item.description,
+            detailDescription: item.detailDescription,
+            shippingInfo: item.shippingInfo,
+            reviewInfo: item.reviewInfo,
+            imagePosition: item.imagePosition || "50% 50%",
+            imageScale: item.imageScale || "1",
+            link: item.link,
+            existingImages: item.images && item.images.length ? item.images : item.image ? [item.image] : [],
+            imageNames: [],
+            imagesData: [],
+          }, `已正式上架：${item.name}。前台現在可以看到了。`);
+          return;
+        }
+
         const button = event.target.closest("[data-delete-id]");
         if (!button || !isGoogleRuntime()) return;
         button.disabled = true;
@@ -1395,7 +1527,7 @@
         productForm.reset();
         productForm.category.value = "全部";
         productForm.sort.value = "999";
-        productForm.status.value = "上架";
+        productForm.status.value = "草稿";
           productForm.imageX.value = "50";
           productForm.imageY.value = "50";
           productForm.imageScale.value = "100";
@@ -1403,7 +1535,7 @@
         previewImages = [];
         activePreviewImage = 0;
         editorPanel.classList.remove("hidden");
-        setSaveMessage("尚未儲存");
+        setSaveMessage("新商品預設為草稿，儲存後前台不會顯示。");
         renderPickedImages();
         updatePreview();
         editorPanel.scrollIntoView({ behavior: "smooth" });

@@ -95,7 +95,7 @@ function saveProduct(payload) {
   const imageUrls = saveProductImages_(payload, id);
   const rowValues = [
     id,
-    payload.status || "上架",
+    payload.status || "草稿",
     payload.name || "",
     payload.category || "全部",
     normalizePrice_(payload.price),
