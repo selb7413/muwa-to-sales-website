@@ -964,7 +964,7 @@
           .join("");
       }
 
-      function getEditorPurchaseOptions() {
+      function getEditorPurchaseOptions({ keepDrafts = false } = {}) {
         return Array.from(purchaseOptionEditor.querySelectorAll("[data-purchase-row]"))
           .map((row) => {
             const addons = Array.from(row.querySelectorAll("[data-addon-row]"))
@@ -972,14 +972,14 @@
                 name: addonRow.querySelector("[data-addon-name]")?.value.trim() || "",
                 price: parsePrice(addonRow.querySelector("[data-addon-price]")?.value || ""),
               }))
-              .filter((addon) => addon.name || addon.price > 0);
+              .filter((addon) => keepDrafts || addon.name || addon.price > 0);
             return {
               name: row.querySelector("[data-purchase-name]")?.value.trim() || "",
               price: parsePrice(row.querySelector("[data-purchase-price]")?.value || ""),
               addons,
             };
           })
-          .filter((item) => item.name || item.price > 0);
+          .filter((item) => keepDrafts || item.name || item.price > 0 || item.addons.length);
       }
 
       function syncPurchaseOptionsFromEditor() {
@@ -1108,7 +1108,7 @@
       });
 
       addPurchaseOption.addEventListener("click", () => {
-        const options = getEditorPurchaseOptions();
+        const options = getEditorPurchaseOptions({ keepDrafts: true });
         options.push({ name: "", price: "" });
         setPurchaseOptions(options);
         setSaveMessage("已新增細項，尚未儲存。");
@@ -1117,7 +1117,7 @@
       purchaseOptionEditor.addEventListener("click", (event) => {
         const addAddonButton = event.target.closest("[data-add-addon]");
         if (addAddonButton) {
-          const options = getEditorPurchaseOptions();
+          const options = getEditorPurchaseOptions({ keepDrafts: true });
           const row = addAddonButton.closest("[data-purchase-row]");
           const index = Array.from(purchaseOptionEditor.querySelectorAll("[data-purchase-row]")).indexOf(row);
           if (options[index]) {

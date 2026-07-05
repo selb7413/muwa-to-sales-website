@@ -1792,6 +1792,44 @@ details p {
   line-height: 1.25;
 }
 
+.social-card {
+  gap: 12px;
+}
+
+.social-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.social-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  color: var(--ink);
+  text-decoration: none;
+  box-shadow: 4px 4px 0 var(--blue);
+}
+
+.social-button img {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.social-button strong {
+  min-width: 0;
+  font-size: 15px;
+  line-height: 1.1;
+}
+
 .line-qr-card {
   grid-template-columns: minmax(0, 1fr) 132px;
   align-items: center;
@@ -2106,6 +2144,14 @@ input[type="file"] {
     grid-template-columns: 1fr;
     justify-items: center;
     text-align: center;
+  }
+
+  .social-buttons {
+    width: 100%;
+  }
+
+  .social-button {
+    justify-content: center;
   }
 
   .line-qr-code img {
