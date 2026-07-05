@@ -463,7 +463,7 @@ h3 {
 .product-visual.has-image img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   object-position: var(--image-position, 50% 50%);
   transform: scale(var(--image-scale, 1));
 }
@@ -475,6 +475,10 @@ h3 {
   background-position: var(--image-position, 50% 50%);
   background-size: var(--image-size, 100% auto);
   background-repeat: no-repeat;
+}
+
+.product-visual .image-frame {
+  background-size: contain;
 }
 
 .product-visual::before,
