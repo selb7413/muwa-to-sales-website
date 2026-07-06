@@ -130,6 +130,22 @@
         align-items: end;
       }
       .addon-editor-row label { margin: 0; }
+      .variant-editor {
+        grid-column: 1 / -1;
+        display: grid;
+        gap: 8px;
+        padding: 10px;
+        background: #fff7e8;
+        border: 2px dashed rgba(37, 35, 32, .38);
+        border-radius: var(--radius);
+      }
+      .variant-editor-row {
+        display: grid;
+        grid-template-columns: minmax(130px, .7fr) minmax(220px, 1.4fr) auto;
+        gap: 8px;
+        align-items: end;
+      }
+      .variant-editor-row label { margin: 0; }
 
       .button {
         min-height: 44px;
@@ -545,6 +561,33 @@
       .option-qty span, .option-qty button { min-height: 38px; display: grid; place-items: center; border: 0; background: var(--paper); font-weight: 950; }
       .option-qty span { border-right: 3px solid var(--ink); border-left: 3px solid var(--ink); }
       .purchase-subtotal { white-space: nowrap; font-weight: 950; }
+      .variant-options {
+        display: grid;
+        gap: 8px;
+        padding: 10px;
+        background: #fff7e8;
+        border: 2px dashed rgba(37, 35, 32, .35);
+        border-radius: 8px;
+      }
+      .variant-group { display: grid; gap: 8px; }
+      .variant-group p { margin: 0; color: var(--muted); font-size: 13px; font-weight: 950; }
+      .variant-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+      .variant-button {
+        min-height: 34px;
+        padding: 5px 12px;
+        border: 3px solid var(--ink);
+        border-radius: 8px;
+        background: var(--paper);
+        color: var(--ink);
+        box-shadow: 3px 3px 0 var(--blue);
+        font-size: 13px;
+        font-weight: 950;
+      }
+      .variant-button.is-active {
+        background: var(--orange);
+        color: #fffaf0;
+        box-shadow: 3px 3px 0 var(--ink);
+      }
       .addon-options {
         display: grid;
         gap: 8px;
@@ -667,7 +710,7 @@
       @media (max-width: 640px) {
         .admin-bar, .site-header { align-items: flex-start; flex-direction: column; }
         .product-grid { grid-template-columns: 1fr; }
-        .field-row, .image-controls, .tabs, .purchase-editor-row, .addon-editor-row, .purchase-line, .addon-option-row { grid-template-columns: 1fr; }
+        .field-row, .image-controls, .tabs, .purchase-editor-row, .variant-editor-row, .addon-editor-row, .purchase-line, .addon-option-row { grid-template-columns: 1fr; }
         .save-actions { grid-template-columns: 1fr; }
         .item { grid-template-columns: 72px minmax(0, 1fr); }
         .item button { grid-column: 1 / -1; }
@@ -705,6 +748,7 @@
       .detail-info h2 { font-size: clamp(22px, 2.2vw, 28px); line-height: 1.2; }
       .detail-price { font-size: clamp(20px, 2vw, 24px); line-height: 1.15; }
       .purchase-option-name,
+      .variant-button,
       .addon-option-row span { font-size: 14px; }
       .purchase-subtotal,
       .purchase-total,
@@ -914,9 +958,24 @@
       ];
 
       function normalizePurchaseOption(item) {
+        const optionGroups = Array.isArray(item?.optionGroups)
+          ? item.optionGroups
+              .map((group) => {
+                const values = Array.isArray(group?.values)
+                  ? group.values
+                  : String(group?.values || "").split(/[、，,\n]/);
+                return {
+                  name: String(group?.name || "").trim(),
+                  values: values.map((value) => String(value || "").trim()).filter(Boolean),
+                };
+              })
+              .filter((group) => group.name && group.values.length)
+          : [];
+
         return {
           name: String(item?.name || "").trim(),
           price: parsePrice(item?.price),
+          optionGroups,
           addons: Array.isArray(item?.addons)
             ? item.addons
                 .map((addon) => ({
@@ -1014,6 +1073,20 @@
               <div class="option-qty"><button type="button">−</button><span>1</span><button type="button">+</button></div>
               <strong class="purchase-subtotal">小計 ${escapeHtml(formatCompactMoney(item.price))}</strong>
             </div>
+            ${item.optionGroups?.length ? `
+              <div class="variant-options">
+                ${item.optionGroups.map((group) => `
+                  <div class="variant-group">
+                    <p>${escapeHtml(group.name)}</p>
+                    <div class="variant-buttons">
+                      ${group.values.map((value, valueIndex) => `
+                        <button class="variant-button ${valueIndex === 0 ? "is-active" : ""}" type="button">${escapeHtml(value)}</button>
+                      `).join("")}
+                    </div>
+                  </div>
+                `).join("")}
+              </div>
+            ` : ""}
             ${item.addons?.length ? `
               <div class="addon-options">
                 <p>可加購</p>
@@ -1053,13 +1126,26 @@
                 price: parsePrice(addonRow.querySelector("[data-addon-price]")?.value || ""),
               }))
               .filter((addon) => keepDrafts || addon.name || addon.price > 0);
+            const optionGroups = Array.from(row.querySelectorAll("[data-option-group-row]"))
+              .map((groupRow) => {
+                const values = String(groupRow.querySelector("[data-option-group-values]")?.value || "")
+                  .split(/[、，,\n]/)
+                  .map((value) => value.trim())
+                  .filter(Boolean);
+                return {
+                  name: groupRow.querySelector("[data-option-group-name]")?.value.trim() || "",
+                  values,
+                };
+              })
+              .filter((group) => keepDrafts || group.name || group.values.length);
             return {
               name: row.querySelector("[data-purchase-name]")?.value.trim() || "",
               price: parsePrice(row.querySelector("[data-purchase-price]")?.value || ""),
+              optionGroups,
               addons,
             };
           })
-          .filter((item) => keepDrafts || item.name || item.price > 0 || item.addons.length);
+          .filter((item) => keepDrafts || item.name || item.price > 0 || item.optionGroups.length || item.addons.length);
       }
 
       function syncPurchaseOptionsFromEditor() {
@@ -1077,6 +1163,23 @@
               <input data-purchase-price type="number" min="0" inputmode="numeric" value="${escapeHtml(item.price ?? "")}" placeholder="199" />
             </label>
             <button class="button secondary small" type="button" data-remove-purchase-option="${index}">刪除</button>
+            <div class="variant-editor" data-option-group-list>
+              <div class="addon-editor-head">
+                <strong>指定買這個細項時，顧客要選的按鈕規格</strong>
+                <button class="button secondary small" type="button" data-add-option-group="${index}">新增選項群組</button>
+              </div>
+              ${(item.optionGroups || []).map((group, groupIndex) => `
+                <div class="variant-editor-row" data-option-group-row>
+                  <label>選項名稱
+                    <input data-option-group-name value="${escapeHtml(group.name || "")}" placeholder="例如：顏色" />
+                  </label>
+                  <label>按鈕選項
+                    <input data-option-group-values value="${escapeHtml((group.values || []).join("、"))}" placeholder="例如：紅色、綠色、藍色" />
+                  </label>
+                  <button class="button secondary small" type="button" data-remove-option-group="${groupIndex}">刪除選項</button>
+                </div>
+              `).join("")}
+            </div>
             <div class="addon-editor" data-addon-list>
               <div class="addon-editor-head">
                 <strong>指定買這個細項時，可加購的優惠品</strong>
@@ -1194,7 +1297,42 @@
         setSaveMessage("已新增細項，尚未儲存。");
       });
 
+      purchaseOptionEditor.addEventListener("input", () => {
+        syncPurchaseOptionsFromEditor();
+        updatePreview();
+        setSaveMessage("已修改購買細項，尚未儲存。");
+      });
+
+      purchaseOptionEditor.addEventListener("change", () => {
+        syncPurchaseOptionsFromEditor();
+        updatePreview();
+        setSaveMessage("已修改購買細項，尚未儲存。");
+      });
+
       purchaseOptionEditor.addEventListener("click", (event) => {
+        const addOptionGroupButton = event.target.closest("[data-add-option-group]");
+        if (addOptionGroupButton) {
+          const options = getEditorPurchaseOptions({ keepDrafts: true });
+          const row = addOptionGroupButton.closest("[data-purchase-row]");
+          const index = Array.from(purchaseOptionEditor.querySelectorAll("[data-purchase-row]")).indexOf(row);
+          if (options[index]) {
+            options[index].optionGroups = options[index].optionGroups || [];
+            options[index].optionGroups.push({ name: "", values: [] });
+            setPurchaseOptions(options);
+            setSaveMessage("已新增按鈕式規格，尚未儲存。");
+          }
+          return;
+        }
+
+        const removeOptionGroupButton = event.target.closest("[data-remove-option-group]");
+        if (removeOptionGroupButton) {
+          removeOptionGroupButton.closest("[data-option-group-row]")?.remove();
+          syncPurchaseOptionsFromEditor();
+          updatePreview();
+          setSaveMessage("已刪除按鈕式規格，尚未儲存。");
+          return;
+        }
+
         const addAddonButton = event.target.closest("[data-add-addon]");
         if (addAddonButton) {
           const options = getEditorPurchaseOptions({ keepDrafts: true });

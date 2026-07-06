@@ -54,9 +54,24 @@ const STORE_LOOKUP_LINKS = {
 const PRODUCT_CACHE_KEY = "muwa-products-cache-v1";
 
 function normalizePurchaseOption(item) {
+  const optionGroups = Array.isArray(item?.optionGroups)
+    ? item.optionGroups
+      .map((group) => {
+        const values = Array.isArray(group?.values)
+          ? group.values
+          : String(group?.values || "").split(/[、，,\n]/);
+        return {
+          name: String(group?.name || "").trim(),
+          values: values.map((value) => String(value || "").trim()).filter(Boolean),
+        };
+      })
+      .filter((group) => group.name && group.values.length)
+    : [];
+
   return {
     name: String(item?.name || "").trim(),
     price: parsePrice(item?.price),
+    optionGroups,
     addons: Array.isArray(item?.addons)
       ? item.addons
         .map((addon) => ({
@@ -615,6 +630,27 @@ function renderPurchaseOptions(product) {
           </div>
           <strong class="purchase-subtotal" data-option-subtotal="${index}">小計 ${escapeHtml(formatCompactMoney(option.price))}</strong>
         </div>
+        ${option.optionGroups?.length ? `
+          <div class="variant-options" aria-label="${escapeHtml(option.name)} 可選規格">
+            ${option.optionGroups.map((group, groupIndex) => `
+              <div class="variant-group" data-variant-group="${escapeHtml(group.name)}" data-variant-parent="${index}" data-variant-group-index="${groupIndex}">
+                <p>${escapeHtml(group.name)}</p>
+                <div class="variant-buttons">
+                  ${group.values.map((value, valueIndex) => `
+                    <button
+                      class="variant-button ${valueIndex === 0 ? "is-active" : ""}"
+                      type="button"
+                      data-variant-button
+                      data-variant-parent="${index}"
+                      data-variant-group-index="${groupIndex}"
+                      data-variant-value="${escapeHtml(value)}"
+                    >${escapeHtml(value)}</button>
+                  `).join("")}
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        ` : ""}
         ${option.addons?.length ? `
           <div class="addon-options" aria-label="${escapeHtml(option.name)} 加購品">
             <p>可加購</p>
@@ -681,6 +717,18 @@ function getCartKey(product, optionName) {
   return `${getProductKey(product)}::${optionName}`;
 }
 
+function getSelectedOptionLabel(row) {
+  const groups = Array.from(row.querySelectorAll("[data-variant-group]"))
+    .map((group) => {
+      const groupName = group.dataset.variantGroup || "";
+      const active = group.querySelector(".variant-button.is-active");
+      const value = active?.dataset.variantValue || "";
+      return groupName && value ? `${groupName}：${value}` : "";
+    })
+    .filter(Boolean);
+  return groups.length ? `（${groups.join(" / ")}）` : "";
+}
+
 function isCustomProduct(productOrItem) {
   const category = String(productOrItem?.category || "").toLowerCase();
   return /客製|客制|custom/.test(category);
@@ -704,7 +752,8 @@ function addActiveProductToCart(mode = "add") {
   let addedQty = 0;
   rows.forEach((row) => {
     const index = row.dataset.optionIndex;
-    const optionName = row.dataset.optionName || activeProduct.name || "商品";
+    const baseOptionName = row.dataset.optionName || activeProduct.name || "商品";
+    const optionName = `${baseOptionName}${getSelectedOptionLabel(row)}`;
     const price = Number(row.dataset.optionPrice || 0);
     const qty = Number(row.querySelector(`[data-option-qty="${index}"]`)?.textContent || 0);
     if (qty <= 0) return;
@@ -724,7 +773,8 @@ function addActiveProductToCart(mode = "add") {
     addedQty += qty;
   });
   document.querySelectorAll("#product-detail [data-addon-index]").forEach((row) => {
-    const parentName = row.dataset.addonParentName || activeProduct.name || "商品";
+    const parentRow = document.querySelector(`#product-detail [data-option-index="${row.dataset.addonParent}"]`);
+    const parentName = `${row.dataset.addonParentName || activeProduct.name || "商品"}${parentRow ? getSelectedOptionLabel(parentRow) : ""}`;
     const addonName = row.dataset.addonName || "加購品";
     const price = Number(row.dataset.addonPrice || 0);
     const keyPart = `${row.dataset.addonParent}:${row.dataset.addonIndex}`;
@@ -1181,6 +1231,19 @@ document.addEventListener("click", (event) => {
 
   const tabButton = event.target.closest("[data-tab]");
   if (tabButton) renderDetailTab(tabButton.dataset.tab);
+
+  const variantButton = event.target.closest("[data-variant-button]");
+  if (variantButton) {
+    const group = variantButton.closest("[data-variant-group]");
+    if (!group) return;
+    group.querySelectorAll("[data-variant-button]").forEach((button) => {
+      button.classList.toggle("is-active", button === variantButton);
+    });
+    const message = document.querySelector("[data-cart-message]");
+    if (message) message.textContent = "";
+    updateDetailOptionTotals();
+    return;
+  }
 
   const optionQty = event.target.closest("[data-option-plus], [data-option-minus]");
   if (optionQty) {

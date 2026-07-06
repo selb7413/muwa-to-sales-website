@@ -908,6 +908,51 @@ h3 {
   font-weight: 950;
 }
 
+.variant-options {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  background: #fff7e8;
+  border: 2px dashed rgba(37, 35, 32, .35);
+  border-radius: 8px;
+}
+
+.variant-group {
+  display: grid;
+  gap: 8px;
+}
+
+.variant-group p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.variant-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.variant-button {
+  min-height: 34px;
+  padding: 5px 12px;
+  border: 3px solid var(--ink);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 3px 3px 0 var(--blue);
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.variant-button.is-active {
+  background: var(--orange);
+  color: #fffaf0;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
 .addon-options {
   display: grid;
   gap: 8px;
@@ -2439,6 +2484,16 @@ label {
   .addon-option-row > span,
   .addon-option-row > strong {
     width: 100%;
+  }
+
+  .variant-buttons {
+    gap: 7px;
+  }
+
+  .variant-button {
+    min-height: 32px;
+    padding: 5px 10px;
+    font-size: 12px;
   }
 
   .option-qty {
