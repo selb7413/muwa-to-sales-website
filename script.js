@@ -420,6 +420,7 @@ function ensureCartModal() {
       <p>確認商品與數量後，下一步填寫購買資訊並建立訂單。</p>
       <div class="cart-list" data-cart-list></div>
       <div class="cart-actions">
+        <button class="button secondary cart-clear-button" type="button" data-clear-cart>一鍵清空</button>
         <button class="button secondary" type="button" data-close-cart>回到上一頁</button>
         <button class="button primary" type="button" data-checkout>結帳</button>
       </div>
@@ -625,7 +626,7 @@ function renderPurchaseOptions(product) {
           </button>
           <div class="option-qty" aria-label="${escapeHtml(option.name)} 數量">
             <button type="button" data-option-minus="${index}" aria-label="減少 ${escapeHtml(option.name)} 數量">−</button>
-            <span data-option-qty="${index}">1</span>
+            <span data-option-qty="${index}">0</span>
             <button type="button" data-option-plus="${index}" aria-label="增加 ${escapeHtml(option.name)} 數量">+</button>
           </div>
           <strong class="purchase-subtotal" data-option-subtotal="${index}">小計 ${escapeHtml(formatCompactMoney(option.price))}</strong>
@@ -833,8 +834,10 @@ function renderCart() {
 
   if (!selectedItems.length) {
     list.innerHTML = "<p>購物車目前是空的。可以回到商品頁加入想購買的商品。</p>";
+    modal.querySelector("[data-clear-cart]")?.setAttribute("disabled", "");
     return;
   }
+  modal.querySelector("[data-clear-cart]")?.removeAttribute("disabled");
 
   const rows = selectedItems
     .map((item) => {
@@ -1219,6 +1222,13 @@ document.addEventListener("click", (event) => {
       cartItems[key].qty = Math.max(0, Number(cartItems[key].qty || 0) - 1);
       if (cartItems[key].qty <= 0) delete cartItems[key];
     }
+    updateCartButton();
+    renderCart();
+  }
+
+  const clearCartButton = event.target.closest("[data-clear-cart]");
+  if (clearCartButton) {
+    cartItems = {};
     updateCartButton();
     renderCart();
   }

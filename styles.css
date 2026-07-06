@@ -1292,6 +1292,11 @@ h3 {
   gap: 12px;
 }
 
+.cart-clear-button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
 .line-panel {
   width: min(520px, 100%);
   text-align: center;
