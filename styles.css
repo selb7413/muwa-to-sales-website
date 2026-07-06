@@ -2514,6 +2514,170 @@ label {
   }
 }
 
+/* Compact type scale based on modern shop layouts: readable, but less screen-hungry. */
+body {
+  font-size: 14px;
+}
+
+h1 {
+  font-size: clamp(26px, 2.6vw, 34px);
+  line-height: 1.15;
+}
+
+h2,
+.line-panel h2,
+.order-panel h2 {
+  font-size: clamp(20px, 2vw, 26px);
+  line-height: 1.25;
+}
+
+h3,
+.product-copy h3,
+.admin-item h3 {
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.section-copy > p:not(.section-kicker),
+.section-heading > p,
+.quality-panel > .section-copy p:not(.section-kicker),
+.wishlist-panel p,
+.order-card p,
+.hero-lede,
+.product-copy span,
+.product-copy-main p,
+.check-list p,
+.faq-list p,
+.detail-description,
+.detail-note,
+.detail-tab-panel p,
+.detail-tab-panel[data-current-tab="shipping"] pre,
+.cart-row p {
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.section-kicker,
+.quiet-line,
+.product-copy strong,
+.product-detail-pill,
+.product-copy .category,
+.form-message,
+label {
+  font-size: 13px;
+}
+
+.button,
+.filter-button,
+.header-cta,
+.cart-button,
+.social-button,
+input,
+select,
+textarea {
+  font-size: 14px;
+}
+
+.detail-info h2 {
+  font-size: clamp(22px, 2.2vw, 28px);
+  line-height: 1.2;
+}
+
+.detail-price {
+  font-size: clamp(20px, 2vw, 24px);
+  line-height: 1.15;
+}
+
+.purchase-option-name,
+.addon-option-row span {
+  font-size: 14px;
+}
+
+.purchase-subtotal,
+.purchase-total,
+.addon-option-row strong {
+  font-size: 14px;
+}
+
+.option-qty button,
+.option-qty span,
+.cart-qty button,
+.cart-qty span,
+.quantity-control button,
+.quantity-control span {
+  font-size: 14px;
+}
+
+.detail-tabs button {
+  min-height: 44px;
+  font-size: 14px;
+}
+
+.detail-tab-panel h3 {
+  font-size: 18px;
+}
+
+.flow-heading strong {
+  font-size: clamp(22px, 2.6vw, 28px);
+}
+
+.flow-panel h3 {
+  font-size: 18px;
+}
+
+.flow-panel li span {
+  font-size: 15px;
+}
+
+.order-success h2 {
+  font-size: clamp(24px, 3.4vw, 30px);
+}
+
+.success-check {
+  width: 66px;
+  height: 66px;
+  font-size: 40px;
+}
+
+@media (max-width: 640px) {
+  h1 {
+    font-size: 24px;
+  }
+
+  h2,
+  .detail-info h2,
+  .line-panel h2,
+  .order-panel h2 {
+    font-size: 20px;
+  }
+
+  h3,
+  .product-copy h3 {
+    font-size: 17px;
+  }
+
+  .hero-lede,
+  .detail-description,
+  .detail-note,
+  .detail-tab-panel p,
+  .detail-tab-panel[data-current-tab="shipping"] pre {
+    font-size: 14px;
+  }
+
+  .detail-price {
+    font-size: 20px;
+  }
+
+  .button,
+  .filter-button,
+  .cart-button,
+  input,
+  select,
+  textarea {
+    font-size: 13px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

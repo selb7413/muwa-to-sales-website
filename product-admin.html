@@ -672,6 +672,56 @@
         .item { grid-template-columns: 72px minmax(0, 1fr); }
         .item button { grid-column: 1 / -1; }
       }
+
+      /* Final compact type scale: mirrors the storefront, so backend preview does not feel oversized. */
+      body { font-size: 14px; }
+      h1 { font-size: clamp(26px, 2.6vw, 34px); line-height: 1.15; }
+      h2 { font-size: clamp(20px, 2vw, 26px); line-height: 1.25; }
+      h3,
+      .product-copy h3,
+      .item h3 { font-size: 18px; line-height: 1.35; }
+      .hero-lede,
+      .product-copy span,
+      .detail-description,
+      .detail-tab-panel p,
+      .detail-tab-panel pre,
+      .field-note,
+      .message,
+      .item p { font-size: 14px; line-height: 1.75; }
+      .section-kicker,
+      .quiet-line,
+      .product-copy .category,
+      .product-copy strong,
+      .purchase-option-name small,
+      label { font-size: 13px; }
+      .button,
+      .nav-links,
+      input,
+      select,
+      textarea,
+      .quantity-control,
+      .option-qty,
+      .tabs button { font-size: 14px; }
+      .detail-info h2 { font-size: clamp(22px, 2.2vw, 28px); line-height: 1.2; }
+      .detail-price { font-size: clamp(20px, 2vw, 24px); line-height: 1.15; }
+      .purchase-option-name,
+      .addon-option-row span { font-size: 14px; }
+      .purchase-subtotal,
+      .purchase-total,
+      .addon-option-row strong { font-size: 14px; }
+      .tabs button { min-height: 44px; }
+      @media (max-width: 640px) {
+        h1 { font-size: 24px; }
+        h2,
+        .detail-info h2 { font-size: 20px; }
+        h3,
+        .product-copy h3 { font-size: 17px; }
+        .button,
+        .nav-links,
+        input,
+        select,
+        textarea { font-size: 13px; }
+      }
     </style>
   </head>
   <body>
