@@ -59,11 +59,11 @@ function normalizePurchaseOption(item) {
     price: parsePrice(item?.price),
     addons: Array.isArray(item?.addons)
       ? item.addons
-          .map((addon) => ({
-            name: String(addon?.name || "").trim(),
-            price: parsePrice(addon?.price),
-          }))
-          .filter((addon) => addon.name && addon.price > 0)
+        .map((addon) => ({
+          name: String(addon?.name || "").trim(),
+          price: parsePrice(addon?.price),
+        }))
+        .filter((addon) => addon.name && addon.price >= 0)
       : [],
   };
 }

@@ -630,6 +630,36 @@
       .message.is-error { color: #b8322b; }
       [contenteditable="true"] { outline: 3px dashed rgba(216, 120, 47, .45); outline-offset: 4px; border-radius: 4px; }
 
+      /* Typography tuning: align backend preview with a cleaner shop-management scale. */
+      h1 { font-size: clamp(28px, 3.4vw, 36px); }
+      h2 { font-size: clamp(22px, 2.4vw, 28px); }
+      h3 { font-size: 19px; }
+      section { padding-top: 48px; padding-bottom: 48px; }
+      .hero-lede { font-size: clamp(16px, 1.5vw, 20px); }
+      .empty-products h3,
+      .product-placeholder { font-size: 22px; }
+      .product-copy h3 { font-size: 20px; line-height: 1.35; }
+      .product-copy span,
+      .detail-description,
+      .detail-tab-panel p,
+      .detail-tab-panel pre { font-size: 15px; line-height: 1.8; }
+      .detail-info h2 { font-size: clamp(26px, 2.6vw, 34px); }
+      .detail-price { font-size: 28px; }
+      .purchase-total { font-size: 18px; }
+      .purchase-option-name,
+      .addon-option-row span { font-size: 15px; }
+      .purchase-subtotal,
+      .addon-option-row strong { font-size: 14px; }
+      .nav-links,
+      .button,
+      input,
+      select,
+      textarea,
+      .quantity-control,
+      .option-qty { font-size: 15px; }
+      .button { min-height: 42px; padding: 0 18px; }
+      label { font-size: 15px; }
+
       @media (max-width: 980px) {
         .hero, .editor-grid, .detail-panel { grid-template-columns: 1fr; }
         .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -843,7 +873,7 @@
                   name: String(addon?.name || "").trim(),
                   price: parsePrice(addon?.price),
                 }))
-                .filter((addon) => addon.name && addon.price > 0)
+                .filter((addon) => addon.name && addon.price >= 0)
             : [],
         };
       }
@@ -994,7 +1024,7 @@
               <input data-purchase-name value="${escapeHtml(item.name || "")}" placeholder="例如：單個碗" />
             </label>
             <label>單價
-              <input data-purchase-price type="number" min="0" inputmode="numeric" value="${escapeHtml(item.price || "")}" placeholder="199" />
+              <input data-purchase-price type="number" min="0" inputmode="numeric" value="${escapeHtml(item.price ?? "")}" placeholder="199" />
             </label>
             <button class="button secondary small" type="button" data-remove-purchase-option="${index}">刪除</button>
             <div class="addon-editor" data-addon-list>
@@ -1008,7 +1038,7 @@
                     <input data-addon-name value="${escapeHtml(addon.name || "")}" placeholder="例如：刻字吊牌" />
                   </label>
                   <label>加購單價
-                    <input data-addon-price type="number" min="0" inputmode="numeric" value="${escapeHtml(addon.price || "")}" placeholder="99" />
+                    <input data-addon-price type="number" min="0" inputmode="numeric" value="${escapeHtml(addon.price ?? "")}" placeholder="99" />
                   </label>
                   <button class="button secondary small" type="button" data-remove-addon="${addonIndex}">刪除加購</button>
                 </div>
