@@ -7,6 +7,7 @@ const PRODUCT_IMAGE_FOLDER_NAME = "MUWA 商品圖片";
 const WISHLIST_IMAGE_FOLDER_NAME = "MUWA 許願池圖片";
 const ADMIN_USER = "muwa.to.sales";
 const ADMIN_KEY = "cindy31127";
+const ADMIN_NOTIFICATION_EMAILS = ["selb7413@gmail.com", "c83177@gmail.com"];
 
 function doGet(e) {
   const action = e.parameter.action || "admin";
@@ -261,6 +262,23 @@ function createOrder_(payload) {
     "",
   ]);
 
+  notifyOrderCreated_({
+    orderId,
+    customerName,
+    customerPhone,
+    customerEmail,
+    shippingMethod: isHome ? "宅配" : `${storeChain} 店到店`,
+    shippingFee,
+    homeAddress,
+    storeChain,
+    storeName,
+    storeCode,
+    transferLast5,
+    itemsText,
+    itemSubtotal,
+    total,
+  });
+
   return { orderId, total, shippingFee, itemSubtotal };
 }
 
@@ -287,7 +305,70 @@ function createWishlist_(payload) {
     "",
   ]);
 
+  notifyWishlistCreated_({
+    wishTitle,
+    wishDetail,
+    imageName,
+    imageUrl,
+  });
+
   return { imageUrl };
+}
+
+function notifyOrderCreated_(order) {
+  const subject = `MUWA 新訂單通知 ${order.orderId}`;
+  const body = [
+    `有一筆新訂單：${order.orderId}`,
+    "",
+    `姓名：${order.customerName}`,
+    `手機：${order.customerPhone}`,
+    `電子信箱：${order.customerEmail}`,
+    `運送方式：${order.shippingMethod}`,
+    `運費：NT$${Number(order.shippingFee || 0).toLocaleString("zh-TW")}`,
+    order.homeAddress ? `宅配地址：${order.homeAddress}` : "",
+    order.storeChain ? `超商：${order.storeChain}` : "",
+    order.storeName ? `門市名稱：${order.storeName}` : "",
+    order.storeCode ? `門市店號：${order.storeCode}` : "",
+    `轉帳帳戶末 5 碼：${order.transferLast5}`,
+    "",
+    "訂單內容：",
+    order.itemsText,
+    "",
+    `商品小計：NT$${Number(order.itemSubtotal || 0).toLocaleString("zh-TW")}`,
+    `應付總額：NT$${Number(order.total || 0).toLocaleString("zh-TW")}`,
+  ].filter((line) => line !== "").join("\n");
+
+  sendAdminNotification_(subject, body);
+}
+
+function notifyWishlistCreated_(wish) {
+  const subject = "MUWA 新許願通知";
+  const body = [
+    "有人送出新的商品許願：",
+    "",
+    `許願商品或情境：${wish.wishTitle || "未填寫"}`,
+    "",
+    "想法內容：",
+    wish.wishDetail || "未填寫",
+    "",
+    wish.imageName ? `圖片檔名：${wish.imageName}` : "",
+    wish.imageUrl ? `圖片連結：${wish.imageUrl}` : "",
+  ].filter((line) => line !== "").join("\n");
+
+  sendAdminNotification_(subject, body);
+}
+
+function sendAdminNotification_(subject, body) {
+  try {
+    MailApp.sendEmail({
+      to: ADMIN_NOTIFICATION_EMAILS.join(","),
+      subject,
+      body,
+      name: "MUWA 後台通知",
+    });
+  } catch (error) {
+    console.error(`管理者通知寄送失敗：${error && error.message ? error.message : error}`);
+  }
 }
 
 function generateOrderId_(sheet) {
