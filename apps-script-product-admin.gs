@@ -8,6 +8,7 @@ const WISHLIST_IMAGE_FOLDER_NAME = "MUWA 許願池圖片";
 const ADMIN_USER = "muwa.to.sales";
 const ADMIN_KEY = "cindy31127";
 const ADMIN_NOTIFICATION_EMAILS = ["selb7413@gmail.com", "c83177@gmail.com"];
+const ORDER_STATUS_OPTIONS = ["待對帳", "對帳成功", "已出貨", "取消"];
 
 function doGet(e) {
   const action = e.parameter.action || "admin";
@@ -85,6 +86,11 @@ function setupWorkbook() {
   getOrderSheet_();
   getWishlistSheet_();
   return { ok: true };
+}
+
+function setupOrderStatusDropdown() {
+  applyOrderStatusDropdown_(getOrderSheet_());
+  return { ok: true, message: "訂單狀態下拉選單已套用。" };
 }
 
 function saveProduct(payload) {
@@ -371,6 +377,15 @@ function sendAdminNotification_(subject, body) {
   }
 }
 
+function testAdminNotification() {
+  MailApp.sendEmail({
+    to: ADMIN_NOTIFICATION_EMAILS.join(","),
+    subject: "MUWA 後台通知測試",
+    body: "這是一封測試信。如果你收到這封信，代表 Apps Script 寄信權限已經授權成功。",
+    name: "MUWA 後台通知",
+  });
+}
+
 function generateOrderId_(sheet) {
   const values = sheet.getDataRange().getValues();
   const used = {};
@@ -390,13 +405,12 @@ function markOrderPaid(orderId, adminKey) {
   assertAdmin_(ADMIN_USER, adminKey);
 
   const sheet = getOrderSheet_();
+  const headerMap = getHeaderMap_(sheet);
   const values = sheet.getDataRange().getValues();
   for (let row = 1; row < values.length; row += 1) {
-    if (String(values[row][1]) === String(orderId)) {
-      sheet.getRange(row + 1, 3).setValue("對帳成功");
-      sheet.getRange(row + 1, 19).setValue(new Date());
-      sheet.getRange(row + 1, 20).setValue("已寄送");
-      sendPaidEmail_(values[row]);
+    if (String(rowValue_(values[row], headerMap, "訂單編號")) === String(orderId)) {
+      sheet.getRange(row + 1, headerMap["狀態"]).setValue("對帳成功");
+      sendPaidOrderEmailForRow_(sheet, row + 1, headerMap);
       return { ok: true };
     }
   }
@@ -404,30 +418,79 @@ function markOrderPaid(orderId, adminKey) {
   throw new Error("找不到訂單。");
 }
 
+function setupPaidNotificationTrigger() {
+  const spreadsheet = SpreadsheetApp.openById(PRODUCT_SHEET_ID);
+  ScriptApp.getProjectTriggers().forEach((trigger) => {
+    if (trigger.getHandlerFunction() === "handlePaidStatusEdit_") {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+
+  ScriptApp.newTrigger("handlePaidStatusEdit_")
+    .forSpreadsheet(spreadsheet)
+    .onEdit()
+    .create();
+
+  return { ok: true, message: "對帳成功自動通知已啟用。" };
+}
+
+function handlePaidStatusEdit_(e) {
+  if (!e || !e.range) return;
+
+  const sheet = e.range.getSheet();
+  if (sheet.getName() !== ORDER_SHEET_NAME) return;
+
+  const headerMap = getHeaderMap_(sheet);
+  const statusColumn = headerMap["狀態"];
+  if (!statusColumn) return;
+  if (e.range.getRow() <= 1 || e.range.getColumn() !== statusColumn) return;
+
+  const status = String(e.range.getValue() || "").trim();
+  if (status !== "對帳成功") return;
+
+  sendPaidOrderEmailForRow_(sheet, e.range.getRow(), headerMap);
+}
+
 function sendPaidOrderEmails() {
   const sheet = getOrderSheet_();
+  const headerMap = getHeaderMap_(sheet);
   const values = sheet.getDataRange().getValues();
   let sent = 0;
 
   for (let row = 1; row < values.length; row += 1) {
-    const status = String(values[row][2] || "").trim();
-    const notificationStatus = String(values[row][19] || "").trim();
+    const status = String(rowValue_(values[row], headerMap, "狀態") || "").trim();
+    const notificationStatus = String(rowValue_(values[row], headerMap, "通知狀態") || "").trim();
     if (status !== "對帳成功" || notificationStatus === "已寄送") continue;
 
-    sendPaidEmail_(values[row]);
-    if (!values[row][18]) sheet.getRange(row + 1, 19).setValue(new Date());
-    sheet.getRange(row + 1, 20).setValue("已寄送");
+    sendPaidOrderEmailForRow_(sheet, row + 1, headerMap);
     sent += 1;
   }
 
   return { ok: true, sent };
 }
 
-function sendPaidEmail_(row) {
-  const orderId = String(row[1] || "");
-  const name = String(row[3] || "");
-  const email = String(row[5] || "");
-  const total = Number(row[17] || 0);
+function sendPaidOrderEmailForRow_(sheet, rowNumber, headerMap) {
+  const row = sheet.getRange(rowNumber, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const notificationStatus = String(rowValue_(row, headerMap, "通知狀態") || "").trim();
+  if (notificationStatus === "已寄送") return false;
+
+  sendPaidEmail_(row, headerMap);
+
+  if (headerMap["對帳時間"] && !rowValue_(row, headerMap, "對帳時間")) {
+    sheet.getRange(rowNumber, headerMap["對帳時間"]).setValue(new Date());
+  }
+  if (headerMap["通知狀態"]) {
+    sheet.getRange(rowNumber, headerMap["通知狀態"]).setValue("已寄送");
+  }
+
+  return true;
+}
+
+function sendPaidEmail_(row, headerMap) {
+  const orderId = String(rowValue_(row, headerMap, "訂單編號") || "");
+  const name = String(rowValue_(row, headerMap, "姓名") || "");
+  const email = String(rowValue_(row, headerMap, "電子信箱") || "");
+  const total = Number(rowValue_(row, headerMap, "應付總額") || 0);
   if (!email) return;
 
   GmailApp.sendEmail(
@@ -436,6 +499,20 @@ function sendPaidEmail_(row) {
     `${name} 您好：\n\nMUWA 已確認收到訂單 ${orderId} 的款項。\n訂單金額：NT$${total.toLocaleString("zh-TW")}\n\n接下來我們會依照訂單資訊安排出貨，謝謝你讓 MUWA 參與你的日常。\n\nMUWA`,
     { name: "MUWA" }
   );
+}
+
+function getHeaderMap_(sheet) {
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  return headers.reduce((map, header, index) => {
+    const name = String(header || "").trim();
+    if (name) map[name] = index + 1;
+    return map;
+  }, {});
+}
+
+function rowValue_(row, headerMap, headerName) {
+  const column = headerMap[headerName];
+  return column ? row[column - 1] : "";
 }
 
 function saveProductImages_(payload, id) {
@@ -521,12 +598,28 @@ function getOrderSheet_() {
   let sheet = spreadsheet.getSheetByName(ORDER_SHEET_NAME);
   if (sheet) {
     removeColumnsByHeaders_(sheet, ["門市地址", "訂單 JSON"]);
+    applyOrderStatusDropdown_(sheet);
     return sheet;
   }
 
   sheet = spreadsheet.insertSheet(ORDER_SHEET_NAME);
   sheet.appendRow(getOrderHeaders_());
+  applyOrderStatusDropdown_(sheet);
   return sheet;
+}
+
+function applyOrderStatusDropdown_(sheet) {
+  const headerMap = getHeaderMap_(sheet);
+  const statusColumn = headerMap["狀態"];
+  if (!statusColumn) return;
+
+  const maxRows = Math.max(sheet.getMaxRows() - 1, 1);
+  const rule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(ORDER_STATUS_OPTIONS, true)
+    .setAllowInvalid(false)
+    .build();
+
+  sheet.getRange(2, statusColumn, maxRows, 1).setDataValidation(rule);
 }
 
 function getWishlistSheet_() {
