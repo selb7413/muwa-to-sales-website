@@ -432,7 +432,8 @@ h3 {
 .product-visual {
   position: relative;
   display: grid;
-  aspect-ratio: 1.15 / 1;
+  box-sizing: content-box;
+  aspect-ratio: 29 / 20;
   place-items: center;
   border-bottom: 4px solid var(--ink);
   overflow: hidden;
