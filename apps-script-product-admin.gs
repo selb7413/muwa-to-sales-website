@@ -3,8 +3,10 @@ const PRODUCT_SHEET_NAME = "MUWA後台";
 const LEGACY_PRODUCT_SHEET_NAME = "MUWA 商品資料表";
 const ORDER_SHEET_NAME = "MUWA 訂單資料表";
 const WISHLIST_SHEET_NAME = "MUWA 商品許願池收件表";
+const WISH_SHOWCASE_SHEET_NAME = "MUWA 許願成功作品";
 const PRODUCT_IMAGE_FOLDER_NAME = "MUWA 商品圖片";
 const WISHLIST_IMAGE_FOLDER_NAME = "MUWA 許願池圖片";
+const WISH_SHOWCASE_IMAGE_FOLDER_NAME = "MUWA 許願成功作品圖片";
 const ADMIN_USER = "muwa.to.sales";
 const ADMIN_KEY = "cindy31127";
 const ADMIN_NOTIFICATION_EMAILS = ["selb7413@gmail.com", "c83177@gmail.com"];
@@ -14,6 +16,9 @@ function doGet(e) {
   const action = e.parameter.action || "admin";
   if (action === "products") {
     return outputProducts_(e);
+  }
+  if (action === "wishShowcase") {
+    return outputWishShowcase_(e);
   }
   if (action === "createOrder") {
     return outputOrderResult_(e);
@@ -81,10 +86,15 @@ function getProducts() {
   return readProducts_();
 }
 
+function getWishShowcases() {
+  return readWishShowcases_();
+}
+
 function setupWorkbook() {
   getProductSheet_();
   getOrderSheet_();
   getWishlistSheet_();
+  getWishShowcaseSheet_();
   return { ok: true };
 }
 
@@ -145,10 +155,76 @@ function deleteProduct(id, adminKey) {
   return { ok: false, message: "找不到商品" };
 }
 
+function saveWishShowcase(payload) {
+  assertAdmin_(payload.adminUser, payload.adminKey);
+
+  const title = String(payload.title || "").trim();
+  const story = String(payload.story || "").trim();
+  if (!title || !story) {
+    throw new Error("請填寫作品名稱與作品故事。");
+  }
+
+  const sheet = getWishShowcaseSheet_();
+  const now = new Date();
+  const id = String(payload.id || `WISH-${Date.now()}`);
+  const existingImage = normalizeImageUrl_(payload.existingImage || "");
+  const imageUrl = payload.imageData
+    ? saveWishShowcaseImage_(payload.imageData, payload.imageName || `${id}.png`)
+    : existingImage;
+  if (!imageUrl) {
+    throw new Error("請上傳作品圖片。");
+  }
+
+  const rowValues = [
+    id,
+    payload.status === "發布" ? "發布" : "草稿",
+    title,
+    story,
+    imageUrl,
+    Number(payload.sort || 999),
+    payload.createdAt || now,
+    now,
+  ];
+  const existingRow = findWishShowcaseRow_(sheet, id);
+  if (existingRow) {
+    sheet.getRange(existingRow, 1, 1, rowValues.length).setValues([rowValues]);
+    return { ok: true, id, imageUrl, updated: true };
+  }
+
+  sheet.appendRow(rowValues);
+  return { ok: true, id, imageUrl };
+}
+
+function deleteWishShowcase(id, adminKey) {
+  assertAdmin_(ADMIN_USER, adminKey);
+
+  const sheet = getWishShowcaseSheet_();
+  const row = findWishShowcaseRow_(sheet, id);
+  if (!row) return { ok: false, message: "找不到作品" };
+  sheet.deleteRow(row);
+  return { ok: true };
+}
+
 function outputProducts_(e) {
   const products = readProducts_().filter((item) => item.status === "上架");
   const callback = e.parameter.callback;
   const body = JSON.stringify({ products });
+
+  if (callback) {
+    return ContentService
+      .createTextOutput(`${callback}(${body});`)
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+
+  return ContentService
+    .createTextOutput(body)
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function outputWishShowcase_(e) {
+  const items = readWishShowcases_().filter((item) => item.status === "發布");
+  const callback = e.parameter.callback;
+  const body = JSON.stringify({ items });
 
   if (callback) {
     return ContentService
@@ -188,6 +264,24 @@ function readProducts_() {
       imagePosition: String(row[14] || "50% 50%"),
       imageScale: String(row[15] || "1"),
       purchaseOptions: String(row[16] || ""),
+    }))
+    .sort((a, b) => a.sort - b.sort);
+}
+
+function readWishShowcases_() {
+  const sheet = getWishShowcaseSheet_();
+  const values = sheet.getDataRange().getValues().slice(1);
+
+  return values
+    .filter((row) => row[0] || row[2])
+    .map((row) => ({
+      id: String(row[0] || ""),
+      status: String(row[1] || "草稿"),
+      title: String(row[2] || ""),
+      story: String(row[3] || ""),
+      image: normalizeImageUrl_(row[4] || ""),
+      sort: Number(row[5] || 999),
+      createdAt: row[6] || "",
     }))
     .sort((a, b) => a.sort - b.sort);
 }
@@ -292,11 +386,15 @@ function createWishlist_(payload) {
   const sheet = getWishlistSheet_();
   const wishTitle = String(payload.wishTitle || "").trim();
   const wishDetail = String(payload.wishDetail || "").trim();
+  const wishEmail = String(payload.wishEmail || "").trim();
   const imageName = String(payload.imageName || "").trim();
   const imageData = String(payload.imageData || "").trim();
 
   if (!wishTitle && !wishDetail) {
     throw new Error("請填寫想許願的商品或情境。");
+  }
+  if (!wishEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(wishEmail)) {
+    throw new Error("請填寫正確的聯絡信箱。");
   }
 
   const imageUrl = imageData ? saveWishlistImage_(imageData, imageName || `muwa-wish-${Date.now()}.png`) : "";
@@ -305,6 +403,7 @@ function createWishlist_(payload) {
     new Date(),
     wishTitle,
     wishDetail,
+    wishEmail,
     imageName,
     imageUrl,
     "新許願",
@@ -314,6 +413,7 @@ function createWishlist_(payload) {
   notifyWishlistCreated_({
     wishTitle,
     wishDetail,
+    wishEmail,
     imageName,
     imageUrl,
   });
@@ -353,6 +453,7 @@ function notifyWishlistCreated_(wish) {
     "有人送出新的商品許願：",
     "",
     `許願商品或情境：${wish.wishTitle || "未填寫"}`,
+    `聯絡信箱：${wish.wishEmail || "未填寫"}`,
     "",
     "想法內容：",
     wish.wishDetail || "未填寫",
@@ -573,10 +674,28 @@ function saveWishlistImage_(dataUrl, fileName) {
   return file.getUrl();
 }
 
+function saveWishShowcaseImage_(dataUrl, fileName) {
+  const folder = getWishShowcaseImageFolder_();
+  const match = String(dataUrl).match(/^data:(.+);base64,(.+)$/);
+  if (!match) return "";
+
+  const safeName = `${Date.now()}-${String(fileName || "muwa-wish-showcase.png").replace(/[\\/:*?"<>|]/g, "-")}`;
+  const blob = Utilities.newBlob(Utilities.base64Decode(match[2]), match[1], safeName);
+  const file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return `https://drive.google.com/thumbnail?id=${file.getId()}&sz=w1600`;
+}
+
 function getWishlistImageFolder_() {
   const folders = DriveApp.getFoldersByName(WISHLIST_IMAGE_FOLDER_NAME);
   if (folders.hasNext()) return folders.next();
   return DriveApp.createFolder(WISHLIST_IMAGE_FOLDER_NAME);
+}
+
+function getWishShowcaseImageFolder_() {
+  const folders = DriveApp.getFoldersByName(WISH_SHOWCASE_IMAGE_FOLDER_NAME);
+  if (folders.hasNext()) return folders.next();
+  return DriveApp.createFolder(WISH_SHOWCASE_IMAGE_FOLDER_NAME);
 }
 
 function getProductSheet_() {
@@ -630,6 +749,21 @@ function getWishlistSheet_() {
     sheet.appendRow(getWishlistHeaders_());
   }
   removeColumnsByHeaders_(sheet, ["使用者裝置資訊", "頁面來源"]);
+  const headerMap = getHeaderMap_(sheet);
+  if (!headerMap["聯絡信箱"]) {
+    sheet.insertColumnAfter(3);
+    sheet.getRange(1, 4).setValue("聯絡信箱");
+  }
+  return sheet;
+}
+
+function getWishShowcaseSheet_() {
+  const spreadsheet = SpreadsheetApp.openById(PRODUCT_SHEET_ID);
+  let sheet = spreadsheet.getSheetByName(WISH_SHOWCASE_SHEET_NAME);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(WISH_SHOWCASE_SHEET_NAME);
+    sheet.appendRow(getWishShowcaseHeaders_());
+  }
   return sheet;
 }
 
@@ -683,11 +817,16 @@ function getWishlistHeaders_() {
     "建立時間",
     "許願商品或情境",
     "想法內容",
+    "聯絡信箱",
     "圖片檔名",
     "圖片連結",
     "狀態",
     "備註",
   ];
+}
+
+function getWishShowcaseHeaders_() {
+  return ["ID", "狀態", "作品名稱", "作品故事", "圖片", "排序", "建立時間", "更新時間"];
 }
 
 function removeColumnsByHeaders_(sheet, headersToRemove) {
@@ -700,6 +839,14 @@ function removeColumnsByHeaders_(sheet, headersToRemove) {
 }
 
 function findProductRow_(sheet, id) {
+  const values = sheet.getDataRange().getValues();
+  for (let row = 1; row < values.length; row += 1) {
+    if (String(values[row][0]) === String(id)) return row + 1;
+  }
+  return 0;
+}
+
+function findWishShowcaseRow_(sheet, id) {
   const values = sheet.getDataRange().getValues();
   for (let row = 1; row < values.length; row += 1) {
     if (String(values[row][0]) === String(id)) return row + 1;

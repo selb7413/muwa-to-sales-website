@@ -8,8 +8,8 @@
       name="description"
       content="MUWA 把實際做好、自己也願意使用的商品整理上架。讓每一件日常物品，都多一點關於你的元素與情感價值。"
     />
-    <meta name="build-version" content="20260705-about-line-layout" />
-    <link rel="stylesheet" href="./styles.css?v=20260706-cart-clear-qty-zero" />
+    <meta name="build-version" content="20260727-wishlist-showcase" />
+    <link rel="stylesheet" href="./styles.css?v=20260727-wishlist-showcase" />
   </head>
   <body>
     <header class="site-header" aria-label="主要導覽">
@@ -67,13 +67,15 @@
         <div class="wishlist-panel">
           <div>
             <p class="section-kicker">商品許願池</p>
-            <h2 id="wishlist-title">
-              我想要買，<br />
-              但是沒有人做。
-            </h2>
+            <h2 id="wishlist-title">我想要買，但是沒有人做！</h2>
             <p>
-              如果你腦中有一個想法，或看過市面上的商品但覺得還可以更貼近自己的生活，都可以先提供概念。也可以上傳示意圖，讓我們知道你想解決的是什麼情境。
+              如果你腦中有一個想法，或看過市面上的商品但想融入自己的風格，可以寫下來或上傳示意圖讓我們知道。經 MUWA 評估可行後，說不定可以實現你的願望唷～
             </p>
+            <ul class="wishlist-notes" aria-label="許願須知">
+              <li>無論許願成功與否，MUWA 都會回信告知您。</li>
+              <li>許願成功的商品，將由 MUWA 內部評估決定是否上架；若不上架，將限定發售給許願者。</li>
+              <li>許願成功的幸運星，經許願者同意後，也會發布在網頁上與大家分享。</li>
+            </ul>
           </div>
           <form class="wishlist-form">
             <label>
@@ -85,12 +87,30 @@
               <textarea name="wishDetail" rows="5" placeholder="可以描述用途、希望改善的痛點、預算感，或你覺得市面商品哪裡不夠好。"></textarea>
             </label>
             <label>
+              聯絡信箱 <span class="required-mark" aria-hidden="true">*</span>
+              <input type="email" name="wishEmail" autocomplete="email" placeholder="example@gmail.com" required />
+            </label>
+            <label>
               上傳示意圖
               <input type="file" name="wishImage" accept="image/*" />
             </label>
             <button class="button primary" type="submit">送出許願</button>
             <p class="form-message" role="status" aria-live="polite"></p>
           </form>
+        </div>
+        <div class="wishlist-showcase" aria-labelledby="wishlist-showcase-title">
+          <div class="wishlist-showcase-heading">
+            <div>
+              <p class="section-kicker">願望實現紀錄</p>
+              <h3 id="wishlist-showcase-title">許願成功作品分享集</h3>
+            </div>
+            <p>從一個想法開始，慢慢成為真正能陪伴日常的作品。</p>
+          </div>
+          <div class="wishlist-showcase-grid" id="wishlist-showcase-grid" aria-live="polite">
+            <div class="wishlist-showcase-empty">
+              <strong>作品載入中～請稍後～</strong>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -244,7 +264,7 @@
       </p>
     </footer>
 
-    <script src="./config.js?v=20260704-backend-wishlist-cache"></script>
-    <script src="./script.js?v=20260706-cart-clear-qty-zero"></script>
+    <script src="./config.js?v=20260727-wishlist-showcase"></script>
+    <script src="./script.js?v=20260727-wishlist-showcase"></script>
   </body>
 </html>

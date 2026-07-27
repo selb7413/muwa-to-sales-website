@@ -1,5 +1,6 @@
 const productGrid = document.querySelector("#product-grid");
 const wishlistForm = document.querySelector(".wishlist-form");
+const wishlistShowcaseGrid = document.querySelector("#wishlist-showcase-grid");
 let productStore = [];
 let activeProduct = null;
 let activeImageIndex = 0;
@@ -344,6 +345,53 @@ function loadProductFeed() {
   };
 
   script.src = `${feedUrl}${separator}action=products&callback=${callbackName}`;
+  document.body.appendChild(script);
+}
+
+function renderWishShowcase(items) {
+  if (!wishlistShowcaseGrid) return;
+  if (!items.length) {
+    wishlistShowcaseGrid.innerHTML = `
+      <div class="wishlist-showcase-empty">
+        <strong>第一件實現的願望，正在路上。</strong>
+      </div>
+    `;
+    return;
+  }
+
+  wishlistShowcaseGrid.innerHTML = items.map((item) => `
+    <article class="wishlist-showcase-card">
+      <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.title)}" loading="lazy" />
+      <div class="wishlist-showcase-copy">
+        <h4>${escapeHtml(item.title)}</h4>
+        <p>${escapeHtml(item.story)}</p>
+      </div>
+    </article>
+  `).join("");
+}
+
+function loadWishShowcase() {
+  if (!wishlistShowcaseGrid) return;
+  const feedUrl = window.MUWA_CONFIG?.productFeedUrl || "";
+  if (!feedUrl) {
+    renderWishShowcase([]);
+    return;
+  }
+
+  const callbackName = `muwaWishShowcase_${Date.now()}`;
+  const script = document.createElement("script");
+  const separator = feedUrl.includes("?") ? "&" : "?";
+  window[callbackName] = (payload) => {
+    renderWishShowcase(Array.isArray(payload.items) ? payload.items : []);
+    delete window[callbackName];
+    script.remove();
+  };
+  script.onerror = () => {
+    renderWishShowcase([]);
+    delete window[callbackName];
+    script.remove();
+  };
+  script.src = `${feedUrl}${separator}action=wishShowcase&callback=${callbackName}`;
   document.body.appendChild(script);
 }
 
@@ -1303,6 +1351,7 @@ if (wishlistForm) {
     const data = new FormData(wishlistForm);
     const wishTitle = String(data.get("wishTitle") || "").trim();
     const wishDetail = String(data.get("wishDetail") || "").trim();
+    const wishEmail = String(data.get("wishEmail") || "").trim();
     const image = data.get("wishImage");
     const imageNote = image && image.name ? `，示意圖「${image.name}」也已放進參考` : "";
     const title = wishTitle || "這個商品想法";
@@ -1311,6 +1360,11 @@ if (wishlistForm) {
 
     if (!endpoint) {
       message.textContent = "表單端點尚未設定。請先到 config.js 填入 Google Apps Script Web App URL。";
+      return;
+    }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(wishEmail)) {
+      message.textContent = "請填寫正確的聯絡信箱。";
+      wishlistForm.elements.wishEmail.focus();
       return;
     }
 
@@ -1322,12 +1376,13 @@ if (wishlistForm) {
         action: "wishlist",
         wishTitle: title,
         wishDetail,
+        wishEmail,
         imageName: image && image.name ? image.name : "",
         imageData,
       });
 
       wishlistForm.reset();
-      message.textContent = `${title} 已送出${imageNote}。請到 MUWA後台 的許願池分頁確認資料。`;
+      message.textContent = `${title} 已送出${imageNote}。無論許願結果如何，MUWA 都會寄信回覆你。`;
     } catch {
       message.textContent = "送出失敗，請稍後再試，或直接來信 muwa.to.sales@gmail.com。";
     }
@@ -1344,6 +1399,7 @@ function readFileAsDataUrl(file) {
 }
 
 loadProductFeed();
+loadWishShowcase();
 ensureCartButton();
 updateCartButton();
 

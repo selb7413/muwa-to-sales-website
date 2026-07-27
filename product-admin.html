@@ -164,6 +164,59 @@
       .button.blue { background: var(--blue); }
       .button.small { min-height: 38px; padding: 0 12px; font-size: 14px; }
 
+      .showcase-admin {
+        width: min(1248px, calc(100% - 32px));
+        margin: 28px auto;
+        padding: 24px;
+        background: var(--paper);
+        border: 4px solid var(--ink);
+        border-radius: 14px;
+        box-shadow: var(--shadow);
+      }
+      .showcase-admin-grid {
+        display: grid;
+        grid-template-columns: minmax(0, .82fr) minmax(360px, 1.18fr);
+        gap: 24px;
+        align-items: start;
+      }
+      .showcase-preview {
+        overflow: hidden;
+        background: var(--paper);
+        border: 4px solid var(--ink);
+        border-radius: var(--radius);
+        box-shadow: 7px 7px 0 var(--ink);
+      }
+      .showcase-preview img {
+        display: block;
+        width: 100%;
+        aspect-ratio: 29 / 20;
+        object-fit: cover;
+        background: var(--tan);
+        border-bottom: 4px solid var(--ink);
+      }
+      .showcase-preview img:not([src]) { display: none; }
+      .showcase-preview-copy { padding: 18px; }
+      .showcase-preview-copy h3 { margin: 0 0 8px; }
+      .showcase-preview-copy p { margin: 0; white-space: pre-line; }
+      .showcase-list { display: grid; gap: 12px; margin-top: 24px; }
+      .showcase-item {
+        display: grid;
+        grid-template-columns: 110px minmax(0, 1fr) auto;
+        gap: 14px;
+        align-items: center;
+        padding: 12px;
+        border: 3px solid var(--ink);
+        border-radius: var(--radius);
+      }
+      .showcase-item img {
+        width: 110px;
+        aspect-ratio: 29 / 20;
+        object-fit: cover;
+        border: 2px solid var(--ink);
+        border-radius: 5px;
+      }
+      .showcase-item-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
       .admin-shell { padding-bottom: 64px; }
       .admin-bar {
         position: sticky;
@@ -705,7 +758,7 @@
       label { font-size: 15px; }
 
       @media (max-width: 980px) {
-        .hero, .editor-grid, .detail-panel { grid-template-columns: 1fr; }
+        .hero, .editor-grid, .detail-panel, .showcase-admin-grid { grid-template-columns: 1fr; }
         .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       }
       @media (max-width: 640px) {
@@ -715,6 +768,9 @@
         .save-actions { grid-template-columns: 1fr; }
         .item { grid-template-columns: 72px minmax(0, 1fr); }
         .item button { grid-column: 1 / -1; }
+        .showcase-item { grid-template-columns: 82px minmax(0, 1fr); }
+        .showcase-item img { width: 82px; }
+        .showcase-item-actions { grid-column: 1 / -1; }
       }
 
       /* Final compact type scale: mirrors the storefront, so backend preview does not feel oversized. */
@@ -787,6 +843,7 @@
         <strong>MUWA 管理者模式</strong>
         <div class="admin-actions">
           <button class="button" type="button" id="addProduct">新增商品</button>
+          <button class="button secondary" type="button" id="jumpWishShowcase">管理許願作品</button>
           <button class="button secondary" type="button" id="refreshProducts">重新整理商品</button>
           <button class="button blue" type="button" id="logout">登出</button>
         </div>
@@ -887,6 +944,40 @@
         <h2>目前商品</h2>
         <div class="list" id="list"></div>
       </section>
+
+      <section class="showcase-admin" id="wishShowcaseAdmin">
+        <p class="section-kicker">許願成功作品分享集</p>
+        <h2>先存草稿，確認後再發布</h2>
+        <div class="showcase-admin-grid">
+          <form id="showcaseForm">
+            <label>作品名稱 <input name="title" required placeholder="例如：把許願變成日常收納" /></label>
+            <label>作品故事 <textarea name="story" required placeholder="說明許願者想解決的情境，以及 MUWA 如何把它做出來。"></textarea></label>
+            <label>作品圖片 <input name="image" type="file" accept="image/*" /></label>
+            <div class="field-row">
+              <label>排序 <input name="sort" type="number" value="999" /></label>
+              <label>狀態
+                <select name="status">
+                  <option value="草稿">草稿</option>
+                  <option value="發布">發布</option>
+                </select>
+              </label>
+            </div>
+            <div class="save-actions">
+              <button class="button secondary" type="submit" data-showcase-status="草稿">儲存草稿</button>
+              <button class="button" type="submit" data-showcase-status="發布">發布到前台</button>
+            </div>
+            <p class="message" id="showcaseMessage">尚未儲存</p>
+          </form>
+          <article class="showcase-preview">
+            <img id="showcasePreviewImage" alt="作品圖片預覽" />
+            <div class="showcase-preview-copy">
+              <h3 id="showcasePreviewTitle">作品名稱會顯示在這裡</h3>
+              <p id="showcasePreviewStory">作品故事會依照你的換行顯示。</p>
+            </div>
+          </article>
+        </div>
+        <div class="showcase-list" id="showcaseList"></div>
+      </section>
     </main>
 
     <script>
@@ -909,6 +1000,14 @@
       const addImage = document.querySelector("#addImage");
       const addPurchaseOption = document.querySelector("#addPurchaseOption");
       const purchaseOptionEditor = document.querySelector("#purchaseOptionEditor");
+      const showcaseForm = document.querySelector("#showcaseForm");
+      const showcaseList = document.querySelector("#showcaseList");
+      const showcaseMessage = document.querySelector("#showcaseMessage");
+      const showcasePreviewImage = document.querySelector("#showcasePreviewImage");
+      const showcasePreviewTitle = document.querySelector("#showcasePreviewTitle");
+      const showcasePreviewStory = document.querySelector("#showcasePreviewStory");
+      const wishShowcaseAdmin = document.querySelector("#wishShowcaseAdmin");
+      const jumpWishShowcase = document.querySelector("#jumpWishShowcase");
       const logout = document.querySelector("#logout");
       let adminUser = sessionStorage.getItem("muwaAdminUser") || "";
       let adminKey = sessionStorage.getItem("muwaAdminKey") || "";
@@ -917,6 +1016,10 @@
       let dragState = null;
       let editingProductId = "";
       let currentProducts = [];
+      let currentShowcases = [];
+      let editingShowcaseId = "";
+      let editingShowcaseCreatedAt = "";
+      let showcaseImage = { src: "", name: "", existing: false };
 
       function setSaveMessage(text, status = "") {
         [message, previewMessage].forEach((node) => {
@@ -1230,6 +1333,7 @@
         editorPanel.classList.remove("hidden");
         updatePreview();
         loadProducts();
+        loadWishShowcases();
       }
 
       loginForm.addEventListener("submit", (event) => {
@@ -1260,6 +1364,10 @@
 
       document.querySelector("#jumpProducts").addEventListener("click", () => {
         document.querySelector("#products").scrollIntoView({ behavior: "smooth" });
+      });
+
+      jumpWishShowcase.addEventListener("click", () => {
+        wishShowcaseAdmin.scrollIntoView({ behavior: "smooth" });
       });
 
       function readFile(file) {
@@ -1530,6 +1638,146 @@
         setSaveMessage("已修改狀態，尚未儲存。");
       });
 
+      function updateShowcasePreview() {
+        const title = String(showcaseForm.title.value || "").trim();
+        const story = String(showcaseForm.story.value || "").trim();
+        showcasePreviewTitle.textContent = title || "作品名稱會顯示在這裡";
+        showcasePreviewStory.textContent = story || "作品故事會依照你的換行顯示。";
+        if (showcaseImage.src) {
+          showcasePreviewImage.src = showcaseImage.src;
+        } else {
+          showcasePreviewImage.removeAttribute("src");
+        }
+      }
+
+      function resetShowcaseForm() {
+        editingShowcaseId = "";
+        editingShowcaseCreatedAt = "";
+        showcaseImage = { src: "", name: "", existing: false };
+        showcaseForm.reset();
+        showcaseForm.sort.value = "999";
+        showcaseForm.status.value = "草稿";
+        showcaseMessage.textContent = "新作品預設為草稿，尚未儲存。";
+        updateShowcasePreview();
+      }
+
+      function loadWishShowcases() {
+        if (!isGoogleRuntime()) {
+          showcaseList.innerHTML = "<p>本機可以預覽版面；正式儲存與發布請使用 Apps Script 後台。</p>";
+          return;
+        }
+        showcaseList.innerHTML = "<p>讀取許願作品中...</p>";
+        google.script.run
+          .withSuccessHandler(renderWishShowcases)
+          .withFailureHandler((error) => {
+            showcaseList.innerHTML = `<p>讀取失敗：${escapeHtml(error.message)}</p>`;
+          })
+          .getWishShowcases();
+      }
+
+      function renderWishShowcases(items) {
+        currentShowcases = Array.isArray(items) ? items : [];
+        if (!currentShowcases.length) {
+          showcaseList.innerHTML = "<p>目前還沒有許願成功作品。</p>";
+          return;
+        }
+        showcaseList.innerHTML = currentShowcases.map((item) => `
+          <article class="showcase-item">
+            <img src="${escapeHtml(item.image)}" alt="" />
+            <div>
+              <p><span class="status-pill ${item.status === "發布" ? "is-published" : "is-draft"}">${escapeHtml(item.status)}</span></p>
+              <h3>${escapeHtml(item.title)}</h3>
+              <p>${escapeHtml(item.story)}</p>
+            </div>
+            <div class="showcase-item-actions">
+              <button class="button secondary small" type="button" data-showcase-edit="${escapeHtml(item.id)}">編輯</button>
+              <button class="button blue small" type="button" data-showcase-delete="${escapeHtml(item.id)}">刪除</button>
+            </div>
+          </article>
+        `).join("");
+      }
+
+      showcaseForm.addEventListener("input", updateShowcasePreview);
+      showcaseForm.image.addEventListener("change", async () => {
+        const file = showcaseForm.image.files?.[0];
+        if (!file) return;
+        showcaseImage = { src: await readFile(file), name: file.name, existing: false };
+        showcaseMessage.textContent = "已選擇新圖片，尚未儲存。";
+        updateShowcasePreview();
+      });
+
+      showcaseForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        if (!isGoogleRuntime()) {
+          showcaseMessage.textContent = "本機預覽不能儲存，請到 Apps Script 正式後台操作。";
+          return;
+        }
+        const status = event.submitter?.dataset?.showcaseStatus || showcaseForm.status.value || "草稿";
+        if (!showcaseImage.src) {
+          showcaseMessage.textContent = "請上傳作品圖片。";
+          return;
+        }
+        showcaseMessage.textContent = status === "發布" ? "正在發布，請稍等..." : "正在儲存草稿，請稍等...";
+        google.script.run
+          .withSuccessHandler((result) => {
+            showcaseMessage.textContent = status === "發布" ? "已發布到前台。" : "草稿已儲存，前台不會顯示。";
+            editingShowcaseId = result.id;
+            showcaseImage = { src: result.imageUrl, name: "既有圖片", existing: true };
+            showcaseForm.status.value = status;
+            loadWishShowcases();
+            updateShowcasePreview();
+          })
+          .withFailureHandler((error) => {
+            showcaseMessage.textContent = `儲存失敗：${error.message}`;
+          })
+          .saveWishShowcase({
+            id: editingShowcaseId,
+            createdAt: editingShowcaseCreatedAt,
+            adminUser,
+            adminKey,
+            status,
+            title: showcaseForm.title.value,
+            story: showcaseForm.story.value,
+            sort: showcaseForm.sort.value,
+            existingImage: showcaseImage.existing ? showcaseImage.src : "",
+            imageName: showcaseImage.name,
+            imageData: showcaseImage.existing ? "" : showcaseImage.src,
+          });
+      });
+
+      showcaseList.addEventListener("click", (event) => {
+        const editButton = event.target.closest("[data-showcase-edit]");
+        if (editButton) {
+          const item = currentShowcases.find((entry) => String(entry.id) === String(editButton.dataset.showcaseEdit));
+          if (!item) return;
+          editingShowcaseId = item.id;
+          editingShowcaseCreatedAt = item.createdAt || "";
+          showcaseForm.title.value = item.title || "";
+          showcaseForm.story.value = item.story || "";
+          showcaseForm.sort.value = item.sort || 999;
+          showcaseForm.status.value = item.status || "草稿";
+          showcaseImage = { src: item.image || "", name: "既有圖片", existing: true };
+          showcaseMessage.textContent = `正在編輯：${item.title}，尚未儲存修改。`;
+          updateShowcasePreview();
+          wishShowcaseAdmin.scrollIntoView({ behavior: "smooth" });
+          return;
+        }
+        const deleteButton = event.target.closest("[data-showcase-delete]");
+        if (!deleteButton || !isGoogleRuntime()) return;
+        if (!window.confirm("確定刪除這個許願作品嗎？")) return;
+        deleteButton.disabled = true;
+        google.script.run
+          .withSuccessHandler(() => {
+            resetShowcaseForm();
+            loadWishShowcases();
+          })
+          .withFailureHandler((error) => {
+            deleteButton.disabled = false;
+            showcaseMessage.textContent = `刪除失敗：${error.message}`;
+          })
+          .deleteWishShowcase(deleteButton.dataset.showcaseDelete, adminKey);
+      });
+
       function loadProducts() {
         if (!isGoogleRuntime()) {
           list.innerHTML = "<p>這裡是本機預覽。正式新增商品時，請用 Google Apps Script 部署後的 Web App URL 開啟。</p>";
@@ -1797,6 +2045,7 @@
       renderPurchaseOptionEditor([{ name: "", price: "" }]);
       renderPickedImages();
       updatePreview();
+      resetShowcaseForm();
     </script>
   </body>
 </html>
