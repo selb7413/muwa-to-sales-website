@@ -175,6 +175,10 @@ function saveWishShowcase(payload) {
     throw new Error("請上傳作品圖片。");
   }
 
+  const existingRow = findWishShowcaseRow_(sheet, id);
+  const existingCreatedAt = existingRow
+    ? sheet.getRange(existingRow, 7).getValue()
+    : "";
   const rowValues = [
     id,
     payload.status === "發布" ? "發布" : "草稿",
@@ -182,17 +186,27 @@ function saveWishShowcase(payload) {
     story,
     imageUrl,
     Number(payload.sort || 999),
-    payload.createdAt || now,
+    existingCreatedAt || payload.createdAt || now,
     now,
   ];
-  const existingRow = findWishShowcaseRow_(sheet, id);
   if (existingRow) {
     sheet.getRange(existingRow, 1, 1, rowValues.length).setValues([rowValues]);
-    return { ok: true, id, imageUrl, updated: true };
+    return {
+      ok: true,
+      id,
+      imageUrl,
+      createdAt: serializeSheetDate_(rowValues[6]),
+      updated: true,
+    };
   }
 
   sheet.appendRow(rowValues);
-  return { ok: true, id, imageUrl };
+  return {
+    ok: true,
+    id,
+    imageUrl,
+    createdAt: serializeSheetDate_(rowValues[6]),
+  };
 }
 
 function deleteWishShowcase(id, adminKey) {
@@ -281,9 +295,18 @@ function readWishShowcases_() {
       story: String(row[3] || ""),
       image: normalizeImageUrl_(row[4] || ""),
       sort: Number(row[5] || 999),
-      createdAt: row[6] || "",
+      createdAt: serializeSheetDate_(row[6]),
+      updatedAt: serializeSheetDate_(row[7]),
     }))
     .sort((a, b) => a.sort - b.sort);
+}
+
+function serializeSheetDate_(value) {
+  if (!value) return "";
+  if (Object.prototype.toString.call(value) === "[object Date]") {
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ssXXX");
+  }
+  return String(value);
 }
 
 function createOrder_(payload) {

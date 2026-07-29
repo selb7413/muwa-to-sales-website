@@ -198,6 +198,23 @@
       .showcase-preview-copy { padding: 18px; }
       .showcase-preview-copy h3 { margin: 0 0 8px; }
       .showcase-preview-copy p { margin: 0; white-space: pre-line; }
+      .showcase-editor-head,
+      .showcase-list-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .showcase-editor-head { margin-bottom: 18px; }
+      .showcase-editor-head h3,
+      .showcase-list-head h3 { margin: 0; }
+      .showcase-image-state {
+        margin: -4px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 800;
+      }
+      .showcase-list-head { margin-top: 26px; }
       .showcase-list { display: grid; gap: 12px; margin-top: 24px; }
       .showcase-item {
         display: grid;
@@ -948,11 +965,16 @@
       <section class="showcase-admin" id="wishShowcaseAdmin">
         <p class="section-kicker">許願成功作品分享集</p>
         <h2>先存草稿，確認後再發布</h2>
+        <div class="showcase-editor-head">
+          <h3 id="showcaseEditorTitle">新增作品</h3>
+          <button class="button secondary small" type="button" id="newShowcase">新增作品</button>
+        </div>
         <div class="showcase-admin-grid">
           <form id="showcaseForm">
             <label>作品名稱 <input name="title" required placeholder="例如：把許願變成日常收納" /></label>
             <label>作品故事 <textarea name="story" required placeholder="說明許願者想解決的情境，以及 MUWA 如何把它做出來。"></textarea></label>
             <label>作品圖片 <input name="image" type="file" accept="image/*" /></label>
+            <p class="showcase-image-state" id="showcaseImageState">尚未選擇圖片</p>
             <div class="field-row">
               <label>排序 <input name="sort" type="number" value="999" /></label>
               <label>狀態
@@ -975,6 +997,10 @@
               <p id="showcasePreviewStory">作品故事會依照你的換行顯示。</p>
             </div>
           </article>
+        </div>
+        <div class="showcase-list-head">
+          <h3>已建立作品</h3>
+          <button class="button secondary small" type="button" id="refreshShowcases">重新整理</button>
         </div>
         <div class="showcase-list" id="showcaseList"></div>
       </section>
@@ -1003,6 +1029,10 @@
       const showcaseForm = document.querySelector("#showcaseForm");
       const showcaseList = document.querySelector("#showcaseList");
       const showcaseMessage = document.querySelector("#showcaseMessage");
+      const showcaseEditorTitle = document.querySelector("#showcaseEditorTitle");
+      const showcaseImageState = document.querySelector("#showcaseImageState");
+      const newShowcase = document.querySelector("#newShowcase");
+      const refreshShowcases = document.querySelector("#refreshShowcases");
       const showcasePreviewImage = document.querySelector("#showcasePreviewImage");
       const showcasePreviewTitle = document.querySelector("#showcasePreviewTitle");
       const showcasePreviewStory = document.querySelector("#showcasePreviewStory");
@@ -1657,6 +1687,8 @@
         showcaseForm.reset();
         showcaseForm.sort.value = "999";
         showcaseForm.status.value = "草稿";
+        showcaseEditorTitle.textContent = "新增作品";
+        showcaseImageState.textContent = "尚未選擇圖片";
         showcaseMessage.textContent = "新作品預設為草稿，尚未儲存。";
         updateShowcasePreview();
       }
@@ -1690,7 +1722,7 @@
               <p>${escapeHtml(item.story)}</p>
             </div>
             <div class="showcase-item-actions">
-              <button class="button secondary small" type="button" data-showcase-edit="${escapeHtml(item.id)}">編輯</button>
+              <button class="button secondary small" type="button" data-showcase-edit="${escapeHtml(item.id)}">編輯內容</button>
               <button class="button blue small" type="button" data-showcase-delete="${escapeHtml(item.id)}">刪除</button>
             </div>
           </article>
@@ -1702,9 +1734,17 @@
         const file = showcaseForm.image.files?.[0];
         if (!file) return;
         showcaseImage = { src: await readFile(file), name: file.name, existing: false };
+        showcaseImageState.textContent = `已選擇新圖片：${file.name}`;
         showcaseMessage.textContent = "已選擇新圖片，尚未儲存。";
         updateShowcasePreview();
       });
+
+      newShowcase.addEventListener("click", () => {
+        resetShowcaseForm();
+        showcaseForm.title.focus();
+      });
+
+      refreshShowcases.addEventListener("click", loadWishShowcases);
 
       showcaseForm.addEventListener("submit", (event) => {
         event.preventDefault();
@@ -1722,8 +1762,11 @@
           .withSuccessHandler((result) => {
             showcaseMessage.textContent = status === "發布" ? "已發布到前台。" : "草稿已儲存，前台不會顯示。";
             editingShowcaseId = result.id;
+            editingShowcaseCreatedAt = result.createdAt || editingShowcaseCreatedAt;
             showcaseImage = { src: result.imageUrl, name: "既有圖片", existing: true };
             showcaseForm.status.value = status;
+            showcaseEditorTitle.textContent = `編輯作品：${showcaseForm.title.value.trim()}`;
+            showcaseImageState.textContent = "目前使用已儲存圖片；不選新檔會保留原圖。";
             loadWishShowcases();
             updateShowcasePreview();
           })
@@ -1757,6 +1800,9 @@
           showcaseForm.sort.value = item.sort || 999;
           showcaseForm.status.value = item.status || "草稿";
           showcaseImage = { src: item.image || "", name: "既有圖片", existing: true };
+          showcaseForm.image.value = "";
+          showcaseEditorTitle.textContent = `編輯作品：${item.title}`;
+          showcaseImageState.textContent = "目前使用已儲存圖片；不選新檔會保留原圖。";
           showcaseMessage.textContent = `正在編輯：${item.title}，尚未儲存修改。`;
           updateShowcasePreview();
           wishShowcaseAdmin.scrollIntoView({ behavior: "smooth" });
