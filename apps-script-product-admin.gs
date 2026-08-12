@@ -490,24 +490,32 @@ function notifyWishlistCreated_(wish) {
 
 function sendAdminNotification_(subject, body) {
   try {
-    MailApp.sendEmail({
-      to: ADMIN_NOTIFICATION_EMAILS.join(","),
-      subject,
-      body,
+    sendMuwaEmail_(ADMIN_NOTIFICATION_EMAILS.join(","), subject, body, {
       name: "MUWA 後台通知",
     });
   } catch (error) {
     console.error(`管理者通知寄送失敗：${error && error.message ? error.message : error}`);
+    throw error;
   }
 }
 
 function testAdminNotification() {
-  MailApp.sendEmail({
-    to: ADMIN_NOTIFICATION_EMAILS.join(","),
-    subject: "MUWA 後台通知測試",
-    body: "這是一封測試信。如果你收到這封信，代表 Apps Script 寄信權限已經授權成功。",
-    name: "MUWA 後台通知",
-  });
+  sendMuwaEmail_(
+    ADMIN_NOTIFICATION_EMAILS.join(","),
+    "MUWA 後台通知測試",
+    "這是一封測試信。如果你收到這封信，代表 Apps Script 寄信權限已經授權成功。",
+    { name: "MUWA 後台通知" }
+  );
+}
+
+function checkEmailSender() {
+  const aliases = GmailApp.getAliases();
+  const result = {
+    aliases,
+    note: "正式寄件者由 Web App 部署帳號與觸發器建立帳號決定。",
+  };
+  console.log(JSON.stringify(result, null, 2));
+  return result;
 }
 
 function generateOrderId_(sheet) {
@@ -617,12 +625,17 @@ function sendPaidEmail_(row, headerMap) {
   const total = Number(rowValue_(row, headerMap, "應付總額") || 0);
   if (!email) return;
 
-  GmailApp.sendEmail(
+  sendMuwaEmail_(
     email,
     `MUWA 訂單 ${orderId} 對帳成功`,
     `${name} 您好：\n\nMUWA 已確認收到訂單 ${orderId} 的款項。\n訂單金額：NT$${total.toLocaleString("zh-TW")}\n\n接下來我們會依照訂單資訊安排出貨，謝謝你讓 MUWA 參與你的日常。\n\nMUWA`,
     { name: "MUWA" }
   );
+}
+
+function sendMuwaEmail_(to, subject, body, options) {
+  const sendOptions = Object.assign({ name: "MUWA" }, options || {});
+  GmailApp.sendEmail(to, subject, body, sendOptions);
 }
 
 function getHeaderMap_(sheet) {

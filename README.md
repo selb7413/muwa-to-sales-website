@@ -19,7 +19,7 @@ MUWA sales website extracted into an independent repository.
 
 - Frontend: <https://www.muwa-to-sales.com>
 - Product admin shortcut: <https://www.muwa-to-sales.com/admin/>
-- Product admin Web App: <https://script.google.com/macros/s/AKfycbzj2trYnGMJTDsJWXUSKieoDTzA0cqKoW0PmnPjnjc9gL1qR5auue8pM0gtuARDG8OVNw/exec>
+- Product admin Web App: <https://script.google.com/macros/s/AKfycbx0948ELswVvB1AGjEp9Oj0V7EMh_ecWgO3X2QepVWR0xmsR4VQ2ZTZWLaIitkb5sP-fg/exec>
 
 ## Deployment
 
