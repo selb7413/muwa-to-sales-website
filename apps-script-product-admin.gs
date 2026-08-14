@@ -563,7 +563,7 @@ function setupPaidNotificationTrigger() {
     .onEdit()
     .create();
 
-  return { ok: true, message: "對帳成功自動通知已啟用。" };
+  return { ok: true, message: "訂單狀態自動通知已啟用。" };
 }
 
 function handlePaidStatusEdit_(e) {
@@ -572,15 +572,30 @@ function handlePaidStatusEdit_(e) {
   const sheet = e.range.getSheet();
   if (sheet.getName() !== ORDER_SHEET_NAME) return;
 
+  ensureOrderNotificationHeaders_(sheet);
   const headerMap = getHeaderMap_(sheet);
   const statusColumn = headerMap["狀態"];
   if (!statusColumn) return;
   if (e.range.getRow() <= 1 || e.range.getColumn() !== statusColumn) return;
 
   const status = String(e.range.getValue() || "").trim();
-  if (status !== "對帳成功") return;
-
-  sendPaidOrderEmailForRow_(sheet, e.range.getRow(), headerMap);
+  if (status === "對帳成功") {
+    sendPaidOrderEmailForRow_(sheet, e.range.getRow(), headerMap);
+    return;
+  }
+  if (status === "已出貨") {
+    sendOrderStatusEmailForRow_(sheet, e.range.getRow(), headerMap, {
+      notificationHeader: "出貨通知狀態",
+      sendEmail: sendShippedEmail_,
+    });
+    return;
+  }
+  if (status === "取消") {
+    sendOrderStatusEmailForRow_(sheet, e.range.getRow(), headerMap, {
+      notificationHeader: "取消通知狀態",
+      sendEmail: sendCancelledEmail_,
+    });
+  }
 }
 
 function sendPaidOrderEmails() {
@@ -629,6 +644,44 @@ function sendPaidEmail_(row, headerMap) {
     email,
     `MUWA 訂單 ${orderId} 對帳成功`,
     `${name} 您好：\n\nMUWA 已確認收到訂單 ${orderId} 的款項。\n訂單金額：NT$${total.toLocaleString("zh-TW")}\n\n接下來我們會依照訂單資訊安排出貨，謝謝你讓 MUWA 參與你的日常。\n\nMUWA`,
+    { name: "MUWA" }
+  );
+}
+
+function sendOrderStatusEmailForRow_(sheet, rowNumber, headerMap, config) {
+  const row = sheet.getRange(rowNumber, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const notificationStatus = String(rowValue_(row, headerMap, config.notificationHeader) || "").trim();
+  if (notificationStatus === "已寄送") return false;
+
+  config.sendEmail(row, headerMap);
+  sheet.getRange(rowNumber, headerMap[config.notificationHeader]).setValue("已寄送");
+  return true;
+}
+
+function sendShippedEmail_(row, headerMap) {
+  const orderId = String(rowValue_(row, headerMap, "訂單編號") || "");
+  const name = String(rowValue_(row, headerMap, "姓名") || "");
+  const email = String(rowValue_(row, headerMap, "電子信箱") || "");
+  if (!email) return;
+
+  sendMuwaEmail_(
+    email,
+    `MUWA 訂單 ${orderId} 已出貨`,
+    `${name} 您好：\n\n您在 MUWA 的訂單 ${orderId} 已經完成出貨。\n\n我們已仔細確認並包裝您的商品，接下來請留意物流或超商取貨通知。收到商品後若有任何問題，歡迎透過 MUWA 官方 LINE 與我們聯絡，我們會協助您處理。\n\n謝謝您選擇 MUWA，也謝謝您讓我們參與您的日常。\n\nMUWA`,
+    { name: "MUWA" }
+  );
+}
+
+function sendCancelledEmail_(row, headerMap) {
+  const orderId = String(rowValue_(row, headerMap, "訂單編號") || "");
+  const name = String(rowValue_(row, headerMap, "姓名") || "");
+  const email = String(rowValue_(row, headerMap, "電子信箱") || "");
+  if (!email) return;
+
+  sendMuwaEmail_(
+    email,
+    `MUWA 訂單 ${orderId} 取消通知`,
+    `${name} 您好：\n\n您在 MUWA 的訂單 ${orderId} 已經取消。\n\n若您對訂單取消原因有疑問，或仍希望重新確認商品與訂購內容，歡迎透過 MUWA 官方 LINE 與我們聯絡，我們會協助您處理。\n\n謝謝您的理解，也期待之後還有機會為您服務。\n\nMUWA`,
     { name: "MUWA" }
   );
 }
@@ -753,6 +806,7 @@ function getOrderSheet_() {
   let sheet = spreadsheet.getSheetByName(ORDER_SHEET_NAME);
   if (sheet) {
     removeColumnsByHeaders_(sheet, ["門市地址", "訂單 JSON"]);
+    ensureOrderNotificationHeaders_(sheet);
     applyOrderStatusDropdown_(sheet);
     return sheet;
   }
@@ -761,6 +815,16 @@ function getOrderSheet_() {
   sheet.appendRow(getOrderHeaders_());
   applyOrderStatusDropdown_(sheet);
   return sheet;
+}
+
+function ensureOrderNotificationHeaders_(sheet) {
+  const requiredHeaders = ["出貨通知狀態", "取消通知狀態"];
+  const headerMap = getHeaderMap_(sheet);
+  requiredHeaders.forEach((header) => {
+    if (!headerMap[header]) {
+      sheet.getRange(1, sheet.getLastColumn() + 1).setValue(header);
+    }
+  });
 }
 
 function applyOrderStatusDropdown_(sheet) {
@@ -845,6 +909,8 @@ function getOrderHeaders_() {
     "應付總額",
     "對帳時間",
     "通知狀態",
+    "出貨通知狀態",
+    "取消通知狀態",
   ];
 }
 
