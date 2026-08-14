@@ -1,5 +1,5 @@
 window.MUWA_CONFIG = {
-  wishlistEndpoint: "https://script.google.com/macros/s/AKfycbx0948ELswVvB1AGjEp9Oj0V7EMh_ecWgO3X2QepVWR0xmsR4VQ2ZTZWLaIitkb5sP-fg/exec",
-  productFeedUrl: "https://script.google.com/macros/s/AKfycbx0948ELswVvB1AGjEp9Oj0V7EMh_ecWgO3X2QepVWR0xmsR4VQ2ZTZWLaIitkb5sP-fg/exec",
-  orderEndpoint: "https://script.google.com/macros/s/AKfycbx0948ELswVvB1AGjEp9Oj0V7EMh_ecWgO3X2QepVWR0xmsR4VQ2ZTZWLaIitkb5sP-fg/exec",
+  wishlistEndpoint: "https://script.google.com/macros/s/AKfycbxIwgWejLgM2Sdwg8Nz1l4Zt1TQ1b75p0e0bRORDpX0B4n3sQLdYeSuLtyxBGfSo5B9-w/exec",
+  productFeedUrl: "https://script.google.com/macros/s/AKfycbxIwgWejLgM2Sdwg8Nz1l4Zt1TQ1b75p0e0bRORDpX0B4n3sQLdYeSuLtyxBGfSo5B9-w/exec",
+  orderEndpoint: "https://script.google.com/macros/s/AKfycbxIwgWejLgM2Sdwg8Nz1l4Zt1TQ1b75p0e0bRORDpX0B4n3sQLdYeSuLtyxBGfSo5B9-w/exec",
 };
