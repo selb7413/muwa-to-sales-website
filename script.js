@@ -43,7 +43,7 @@ const DEFAULT_PURCHASE_OPTIONS = [
 
 const DEFAULT_SHIPPING_SETTINGS = [
   { id: "home", label: "宅配", type: "home", chain: "", enabled: true, fee: 140, sort: 1 },
-  { id: "7-11", label: "7-11 店到店", type: "store", chain: "7-11", enabled: true, fee: 60, sort: 2 },
+  { id: "7-11", label: "7-11 店到店", type: "store", chain: "7-11", enabled: true, fee: 0, sort: 2 },
   { id: "family", label: "全家店到店", type: "store", chain: "全家", enabled: true, fee: 60, sort: 3 },
   { id: "hilife", label: "萊爾富店到店", type: "store", chain: "萊爾富", enabled: true, fee: 60, sort: 4 },
 ];

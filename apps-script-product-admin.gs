@@ -5,6 +5,7 @@ const ORDER_SHEET_NAME = "MUWA 訂單資料表";
 const WISHLIST_SHEET_NAME = "MUWA 商品許願池收件表";
 const WISH_SHOWCASE_SHEET_NAME = "MUWA 許願成功作品";
 const SHIPPING_SETTINGS_SHEET_NAME = "MUWA 配送設定";
+const SHIPPING_SETTINGS_PROPERTY_KEY = "MUWA_SHIPPING_SETTINGS_V1";
 const PRODUCT_IMAGE_FOLDER_NAME = "MUWA 商品圖片";
 const WISHLIST_IMAGE_FOLDER_NAME = "MUWA 許願池圖片";
 const WISH_SHOWCASE_IMAGE_FOLDER_NAME = "MUWA 許願成功作品圖片";
@@ -14,7 +15,7 @@ const ADMIN_NOTIFICATION_EMAILS = ["selb7413@gmail.com", "c83177@gmail.com"];
 const ORDER_STATUS_OPTIONS = ["待對帳", "對帳成功", "已出貨", "取消"];
 const DEFAULT_SHIPPING_SETTINGS = [
   { id: "home", label: "宅配", type: "home", chain: "", enabled: true, fee: 140, sort: 1 },
-  { id: "7-11", label: "7-11 店到店", type: "store", chain: "7-11", enabled: true, fee: 60, sort: 2 },
+  { id: "7-11", label: "7-11 店到店", type: "store", chain: "7-11", enabled: true, fee: 0, sort: 2 },
   { id: "family", label: "全家店到店", type: "store", chain: "全家", enabled: true, fee: 60, sort: 3 },
   { id: "hilife", label: "萊爾富店到店", type: "store", chain: "萊爾富", enabled: true, fee: 60, sort: 4 },
 ];
@@ -109,38 +110,36 @@ function setupWorkbook() {
   getOrderSheet_();
   getWishlistSheet_();
   getWishShowcaseSheet_();
-  getShippingSettingsSheet_();
+  readShippingSettings_();
+  removeLegacyShippingSettingsSheet_();
   return { ok: true };
 }
 
 function saveShippingSettings(payload) {
   assertAdmin_(payload.adminUser, payload.adminKey);
 
-  const submitted = Array.isArray(payload.settings) ? payload.settings : [];
-  const submittedMap = submitted.reduce((map, item) => {
-    map[String(item.id || "")] = item;
-    return map;
-  }, {});
-  const normalized = DEFAULT_SHIPPING_SETTINGS.map((defaultItem) => {
-    const item = submittedMap[defaultItem.id] || {};
-    const fee = Number(item.fee);
-    if (!Number.isFinite(fee) || fee < 0) {
-      throw new Error(`${defaultItem.label}的運費須為 0 或正數。`);
-    }
-    return Object.assign({}, defaultItem, {
-      enabled: item.enabled === true || String(item.enabled).toLowerCase() === "true",
-      fee: Math.round(fee),
-    });
-  });
+  const normalized = normalizeShippingSettings_(payload.settings, true);
 
-  const sheet = getShippingSettingsSheet_();
-  if (sheet.getLastRow() > 1) {
-    sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).clearContent();
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    PropertiesService.getScriptProperties().setProperty(
+      SHIPPING_SETTINGS_PROPERTY_KEY,
+      JSON.stringify(normalized)
+    );
+    removeLegacyShippingSettingsSheet_();
+
+    const savedSettings = readShippingSettings_();
+    normalized.forEach((expected) => {
+      const saved = savedSettings.find((item) => item.id === expected.id);
+      if (!saved || Number(saved.fee) !== Number(expected.fee) || Boolean(saved.enabled) !== Boolean(expected.enabled)) {
+        throw new Error(`${expected.label}儲存核對失敗，請再試一次。`);
+      }
+    });
+    return { ok: true, settings: savedSettings, message: "配送設定已儲存並完成核對。" };
+  } finally {
+    lock.releaseLock();
   }
-  sheet.getRange(2, 1, normalized.length, getShippingSettingsHeaders_().length).setValues(
-    normalized.map((item) => [item.id, item.label, item.type, item.chain, item.enabled, item.fee, item.sort, new Date()])
-  );
-  return { ok: true, settings: normalized, message: "配送設定已儲存，前台會使用最新設定。" };
 }
 
 function setupOrderStatusDropdown() {
@@ -313,25 +312,57 @@ function outputShippingSettings_(e) {
 }
 
 function readShippingSettings_() {
-  const sheet = getShippingSettingsSheet_();
-  const values = sheet.getDataRange().getValues().slice(1);
-  const saved = values.reduce((map, row) => {
-    const id = String(row[0] || "").trim();
-    if (!id) return map;
-    map[id] = {
-      id,
-      label: String(row[1] || "").trim(),
-      type: String(row[2] || "").trim(),
-      chain: String(row[3] || "").trim(),
-      enabled: row[4] === true || String(row[4]).toLowerCase() === "true" || String(row[4]) === "啟用",
-      fee: Math.max(0, Number(row[5] || 0)),
-      sort: Number(row[6] || 999),
-    };
+  const properties = PropertiesService.getScriptProperties();
+  const storedJson = properties.getProperty(SHIPPING_SETTINGS_PROPERTY_KEY);
+  if (storedJson) {
+    try {
+      return normalizeShippingSettings_(JSON.parse(storedJson), false);
+    } catch (error) {
+      console.warn(`配送設定讀取失敗，改用預設值：${error.message}`);
+    }
+  }
+
+  const settings = normalizeShippingSettings_(DEFAULT_SHIPPING_SETTINGS, false);
+  properties.setProperty(SHIPPING_SETTINGS_PROPERTY_KEY, JSON.stringify(settings));
+  return settings;
+}
+
+function normalizeShippingSettings_(settings, requireAll) {
+  const submitted = Array.isArray(settings) ? settings : [];
+  const submittedMap = submitted.reduce((map, item) => {
+    map[String(item && item.id || "").trim()] = item || {};
     return map;
   }, {});
 
-  return DEFAULT_SHIPPING_SETTINGS.map((defaultItem) => Object.assign({}, defaultItem, saved[defaultItem.id] || {}))
-    .sort((a, b) => a.sort - b.sort);
+  return DEFAULT_SHIPPING_SETTINGS.map((defaultItem) => {
+    const hasSubmittedItem = Object.prototype.hasOwnProperty.call(submittedMap, defaultItem.id);
+    if (requireAll && !hasSubmittedItem) {
+      throw new Error(`${defaultItem.label}的設定不完整，請重新載入後再試。`);
+    }
+
+    const item = hasSubmittedItem ? submittedMap[defaultItem.id] : defaultItem;
+    const fee = Number(item.fee);
+    if (!Number.isFinite(fee) || fee < 0) {
+      throw new Error(`${defaultItem.label}的運費須為 0 或正數。`);
+    }
+    return Object.assign({}, defaultItem, {
+      enabled: item.enabled === true || String(item.enabled).toLowerCase() === "true" || String(item.enabled) === "啟用",
+      fee: Math.round(fee),
+      sort: Number.isFinite(Number(item.sort)) ? Number(item.sort) : defaultItem.sort,
+    });
+  }).sort((a, b) => a.sort - b.sort);
+}
+
+function removeLegacyShippingSettingsSheet_() {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(PRODUCT_SHEET_ID);
+    const sheet = spreadsheet.getSheetByName(SHIPPING_SETTINGS_SHEET_NAME);
+    if (sheet && spreadsheet.getSheets().length > 1) {
+      spreadsheet.deleteSheet(sheet);
+    }
+  } catch (error) {
+    console.warn(`舊配送設定分頁無法自動刪除，但不影響運費儲存：${error.message}`);
+  }
 }
 
 function readProducts_() {
@@ -960,19 +991,6 @@ function getWishShowcaseSheet_() {
   return sheet;
 }
 
-function getShippingSettingsSheet_() {
-  const spreadsheet = SpreadsheetApp.openById(PRODUCT_SHEET_ID);
-  let sheet = spreadsheet.getSheetByName(SHIPPING_SETTINGS_SHEET_NAME);
-  if (!sheet) {
-    sheet = spreadsheet.insertSheet(SHIPPING_SETTINGS_SHEET_NAME);
-    sheet.appendRow(getShippingSettingsHeaders_());
-    sheet.getRange(2, 1, DEFAULT_SHIPPING_SETTINGS.length, getShippingSettingsHeaders_().length).setValues(
-      DEFAULT_SHIPPING_SETTINGS.map((item) => [item.id, item.label, item.type, item.chain, item.enabled, item.fee, item.sort, new Date()])
-    );
-  }
-  return sheet;
-}
-
 function getProductHeaders_() {
   return [
     "ID",
@@ -1035,10 +1053,6 @@ function getWishlistHeaders_() {
 
 function getWishShowcaseHeaders_() {
   return ["ID", "狀態", "作品名稱", "作品故事", "圖片", "排序", "建立時間", "更新時間"];
-}
-
-function getShippingSettingsHeaders_() {
-  return ["ID", "配送方式", "類型", "超商", "啟用", "運費", "排序", "更新時間"];
 }
 
 function removeColumnsByHeaders_(sheet, headersToRemove) {

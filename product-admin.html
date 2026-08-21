@@ -1108,6 +1108,8 @@
       const shippingSaveRow = document.querySelector("#shippingSaveRow");
       const shippingSaveButton = document.querySelector("#shippingSaveButton");
       let shippingSettingsDirty = false;
+      let shippingSaveTimer = 0;
+      let shippingSaveVersion = 0;
       let adminUser = sessionStorage.getItem("muwaAdminUser") || "";
       let adminKey = sessionStorage.getItem("muwaAdminKey") || "";
       let previewImages = [];
@@ -1161,7 +1163,7 @@
       ];
       const DEFAULT_SHIPPING_SETTINGS = [
         { id: "home", label: "宅配", type: "home", chain: "", enabled: true, fee: 140, sort: 1 },
-        { id: "7-11", label: "7-11 店到店", type: "store", chain: "7-11", enabled: true, fee: 60, sort: 2 },
+        { id: "7-11", label: "7-11 店到店", type: "store", chain: "7-11", enabled: true, fee: 0, sort: 2 },
         { id: "family", label: "全家店到店", type: "store", chain: "全家", enabled: true, fee: 60, sort: 3 },
         { id: "hilife", label: "萊爾富店到店", type: "store", chain: "萊爾富", enabled: true, fee: 60, sort: 4 },
       ];
@@ -1191,7 +1193,7 @@
         shippingSettingsDirty = isDirty;
         shippingSaveRow.classList.toggle("is-dirty", isDirty);
         if (isDirty) {
-          shippingSettingsMessage.textContent = "運費已變更，請按「儲存配送設定」才會更新前台。";
+          shippingSettingsMessage.textContent = "運費已變更，系統即將自動儲存；也可以直接按「儲存配送設定」。";
         }
       }
 
@@ -1212,6 +1214,7 @@
         shippingSettingsMessage.textContent = "正在讀取設定...";
         google.script.run
           .withSuccessHandler((settings) => {
+            if (shippingSettingsDirty) return;
             renderShippingSettings(settings);
             setShippingSettingsDirty(false);
             shippingSettingsMessage.textContent = "設定已載入。";
@@ -1223,8 +1226,55 @@
           .getShippingSettings();
       }
 
-      shippingSettingsList.addEventListener("input", () => setShippingSettingsDirty(true));
-      shippingSettingsList.addEventListener("change", () => setShippingSettingsDirty(true));
+      function shippingSettingsMatch(expected, saved) {
+        return expected.every((expectedItem) => {
+          const savedItem = saved.find((item) => item.id === expectedItem.id);
+          return savedItem
+            && Number(savedItem.fee) === Number(expectedItem.fee)
+            && Boolean(savedItem.enabled) === Boolean(expectedItem.enabled);
+        });
+      }
+
+      function saveShippingSettingsNow() {
+        clearTimeout(shippingSaveTimer);
+        shippingSaveTimer = 0;
+        if (!isGoogleRuntime()) {
+          shippingSettingsMessage.textContent = "本機預覽不能儲存，請到正式 Apps Script 後台操作。";
+          return;
+        }
+
+        const settings = collectShippingSettings();
+        const requestVersion = ++shippingSaveVersion;
+        shippingSettingsMessage.textContent = "正在儲存並核對...";
+        shippingSaveButton.disabled = true;
+        google.script.run
+          .withSuccessHandler((result) => {
+            if (requestVersion !== shippingSaveVersion) return;
+            const savedSettings = Array.isArray(result.settings) ? result.settings : [];
+            shippingSaveButton.disabled = false;
+            if (!shippingSettingsMatch(settings, savedSettings)) {
+              shippingSettingsMessage.textContent = "儲存核對失敗，畫面保留你的輸入，請再按一次儲存。";
+              return;
+            }
+            setShippingSettingsDirty(false);
+            const sevenEleven = savedSettings.find((item) => item.id === "7-11");
+            shippingSettingsMessage.textContent = `儲存成功，前台 7-11 運費為 NT$${Number(sevenEleven?.fee || 0)}。`;
+          })
+          .withFailureHandler((error) => {
+            if (requestVersion !== shippingSaveVersion) return;
+            shippingSaveButton.disabled = false;
+            shippingSettingsMessage.textContent = `儲存失敗，畫面保留你的輸入：${error.message}`;
+          })
+          .saveShippingSettings({ adminUser, adminKey, settings });
+      }
+
+      function queueShippingSettingsSave() {
+        setShippingSettingsDirty(true);
+        clearTimeout(shippingSaveTimer);
+        shippingSaveTimer = setTimeout(saveShippingSettingsNow, 900);
+      }
+
+      shippingSettingsList.addEventListener("input", queueShippingSettingsSave);
 
       window.addEventListener("beforeunload", (event) => {
         if (!shippingSettingsDirty) return;
@@ -1234,34 +1284,7 @@
 
       shippingSettingsForm.addEventListener("submit", (event) => {
         event.preventDefault();
-        if (!isGoogleRuntime()) {
-          shippingSettingsMessage.textContent = "本機預覽不能儲存，請到正式 Apps Script 後台操作。";
-          return;
-        }
-        const settings = collectShippingSettings();
-        shippingSettingsMessage.textContent = "正在儲存...";
-        shippingSaveButton.disabled = true;
-        google.script.run
-          .withSuccessHandler((result) => {
-            google.script.run
-              .withSuccessHandler((savedSettings) => {
-                renderShippingSettings(savedSettings);
-                setShippingSettingsDirty(false);
-                shippingSaveButton.disabled = false;
-                const sevenEleven = savedSettings.find((item) => item.id === "7-11");
-                shippingSettingsMessage.textContent = `儲存成功，前台 7-11 運費為 NT$${Number(sevenEleven?.fee || 0)}。`;
-              })
-              .withFailureHandler((error) => {
-                shippingSaveButton.disabled = false;
-                shippingSettingsMessage.textContent = `已寫入，但重新確認失敗：${error.message}`;
-              })
-              .getShippingSettings();
-          })
-          .withFailureHandler((error) => {
-            shippingSaveButton.disabled = false;
-            shippingSettingsMessage.textContent = `儲存失敗：${error.message}`;
-          })
-          .saveShippingSettings({ adminUser, adminKey, settings });
+        saveShippingSettingsNow();
       });
 
       function normalizePurchaseOption(item) {
