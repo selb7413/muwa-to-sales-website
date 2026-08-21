@@ -41,10 +41,13 @@ const DEFAULT_PURCHASE_OPTIONS = [
   { name: "飼料碗架一組", price: 799 },
 ];
 
-const SHIPPING_OPTIONS = {
-  home: { label: "宅配", fee: 140 },
-  store: { label: "店到店", fee: 60 },
-};
+const DEFAULT_SHIPPING_SETTINGS = [
+  { id: "home", label: "宅配", type: "home", chain: "", enabled: true, fee: 140, sort: 1 },
+  { id: "7-11", label: "7-11 店到店", type: "store", chain: "7-11", enabled: true, fee: 60, sort: 2 },
+  { id: "family", label: "全家店到店", type: "store", chain: "全家", enabled: true, fee: 60, sort: 3 },
+  { id: "hilife", label: "萊爾富店到店", type: "store", chain: "萊爾富", enabled: true, fee: 60, sort: 4 },
+];
+let shippingSettings = DEFAULT_SHIPPING_SETTINGS.map((item) => ({ ...item }));
 
 const STORE_LOOKUP_LINKS = {
   "7-11": "https://emap.pcsc.com.tw/",
@@ -395,6 +398,46 @@ function loadWishShowcase() {
   document.body.appendChild(script);
 }
 
+function normalizeShippingSetting(item) {
+  return {
+    id: String(item?.id || "").trim(),
+    label: String(item?.label || "").trim(),
+    type: item?.type === "home" ? "home" : "store",
+    chain: String(item?.chain || "").trim(),
+    enabled: item?.enabled !== false,
+    fee: Math.max(0, Number(item?.fee || 0)),
+    sort: Number(item?.sort || 999),
+  };
+}
+
+function loadShippingSettings() {
+  const feedUrl = window.MUWA_CONFIG?.productFeedUrl || "";
+  if (!feedUrl) return;
+
+  const callbackName = `muwaShipping_${Date.now()}`;
+  const script = document.createElement("script");
+  const separator = feedUrl.includes("?") ? "&" : "?";
+  window[callbackName] = (payload) => {
+    const settings = Array.isArray(payload.settings)
+      ? payload.settings.map(normalizeShippingSetting).filter((item) => item.id && item.enabled)
+      : [];
+    shippingSettings = settings.sort((a, b) => a.sort - b.sort);
+    const modal = document.querySelector("#order-checkout");
+    if (modal) {
+      renderShippingChoices(modal);
+      updateOrderShippingFields();
+    }
+    delete window[callbackName];
+    script.remove();
+  };
+  script.onerror = () => {
+    delete window[callbackName];
+    script.remove();
+  };
+  script.src = `${feedUrl}${separator}action=shippingSettings&callback=${callbackName}`;
+  document.body.appendChild(script);
+}
+
 function ensureProductModal() {
   let modal = document.querySelector("#product-detail");
   if (modal) return modal;
@@ -512,14 +555,7 @@ function ensureOrderModal() {
 
           <fieldset class="shipping-fieldset">
             <legend>運送方式 <span class="required-mark">*</span></legend>
-            <label class="shipping-choice">
-              <input type="radio" name="shippingMethod" value="home" checked required />
-              <span>宅配 <strong>${formatCompactMoney(SHIPPING_OPTIONS.home.fee)}</strong></span>
-            </label>
-            <label class="shipping-choice">
-              <input type="radio" name="shippingMethod" value="store" required />
-              <span>7-11 / 全家 / 萊爾富店到店 <strong>${formatCompactMoney(SHIPPING_OPTIONS.store.fee)}</strong></span>
-            </label>
+            <div data-shipping-choices></div>
           </fieldset>
 
           <div class="shipping-fields" data-home-fields>
@@ -531,14 +567,8 @@ function ensureOrderModal() {
 
           <div class="shipping-fields" data-store-fields hidden>
             <div class="order-grid">
-              <label>
-                <span class="field-label">超商 <span class="required-mark">*</span></span>
-                <select name="storeChain" disabled required>
-                  <option value="7-11">7-11</option>
-                  <option value="全家">全家</option>
-                  <option value="萊爾富">萊爾富</option>
-                </select>
-              </label>
+              <div class="selected-store"><span class="field-label">已選超商</span><strong data-selected-store></strong></div>
+              <input type="hidden" name="storeChain" />
               <a class="store-lookup" href="${STORE_LOOKUP_LINKS["7-11"]}" target="_blank" rel="noopener" data-store-lookup>查詢門市</a>
             </div>
             <p class="field-note">請先開啟門市查詢頁，找到門市後把資訊填回下方。</p>
@@ -572,12 +602,29 @@ function ensureOrderModal() {
     </article>
   `;
   document.body.appendChild(modal);
+  renderShippingChoices(modal);
   modal.querySelector("[data-order-form]").addEventListener("submit", submitOrderForm);
-  modal.querySelectorAll('input[name="shippingMethod"]').forEach((input) => {
-    input.addEventListener("change", updateOrderShippingFields);
-  });
-  modal.querySelector('select[name="storeChain"]').addEventListener("change", updateStoreLookupLink);
+  modal.querySelector("[data-shipping-choices]").addEventListener("change", updateOrderShippingFields);
   return modal;
+}
+
+function renderShippingChoices(modal = ensureOrderModal()) {
+  const container = modal.querySelector("[data-shipping-choices]");
+  if (!container) return;
+  const previousId = modal.querySelector('input[name="shippingMethod"]:checked')?.value || "";
+  if (!shippingSettings.length) {
+    container.innerHTML = '<p class="field-note">目前沒有開放的配送方式，請先聯絡 MUWA。</p>';
+    return;
+  }
+  container.innerHTML = shippingSettings.map((item, index) => `
+    <label class="shipping-choice">
+      <input type="radio" name="shippingMethod" value="${escapeHtml(item.id)}" ${(item.id === previousId || (!previousId && index === 0)) ? "checked" : ""} required />
+      <span>${escapeHtml(item.label)} <strong>${escapeHtml(formatCompactMoney(item.fee))}</strong></span>
+    </label>
+  `).join("");
+  if (!container.querySelector('input[name="shippingMethod"]:checked')) {
+    container.querySelector('input[name="shippingMethod"]')?.click();
+  }
 }
 
 function ensureLineModal() {
@@ -972,7 +1019,9 @@ function renderOrderForm() {
   modal.querySelector("[data-order-form-view]").hidden = false;
   modal.querySelector("[data-order-success]").hidden = true;
   form.reset();
-  form.querySelector('input[name="shippingMethod"][value="home"]').checked = true;
+  renderShippingChoices(modal);
+  const firstShipping = form.querySelector('input[name="shippingMethod"]');
+  if (firstShipping) firstShipping.checked = true;
   modal.querySelector("[data-order-message]").textContent = "";
   summary.innerHTML = items
     .map((item) => {
@@ -990,20 +1039,21 @@ function renderOrderForm() {
 
 function getSelectedShippingMethod() {
   const modal = ensureOrderModal();
-  return modal.querySelector('input[name="shippingMethod"]:checked')?.value || "home";
+  return modal.querySelector('input[name="shippingMethod"]:checked')?.value || "";
 }
 
 function getSelectedShipping() {
-  return SHIPPING_OPTIONS[getSelectedShippingMethod()] || SHIPPING_OPTIONS.home;
+  return shippingSettings.find((item) => item.id === getSelectedShippingMethod()) || shippingSettings[0] || null;
 }
 
 function updateOrderShippingFields() {
   const modal = ensureOrderModal();
-  const method = getSelectedShippingMethod();
+  const shipping = getSelectedShipping();
+  const method = shipping?.type || "";
   const homeFields = modal.querySelector("[data-home-fields]");
   const storeFields = modal.querySelector("[data-store-fields]");
   const homeInputs = homeFields.querySelectorAll("input");
-  const storeInputs = storeFields.querySelectorAll("input, select");
+  const storeInputs = storeFields.querySelectorAll('input:not([type="hidden"])');
 
   homeFields.hidden = method !== "home";
   storeFields.hidden = method !== "store";
@@ -1021,12 +1071,16 @@ function updateOrderShippingFields() {
 
 function updateStoreLookupLink() {
   const modal = ensureOrderModal();
-  const select = modal.querySelector('select[name="storeChain"]');
+  const shipping = getSelectedShipping();
+  const storeInput = modal.querySelector('input[name="storeChain"]');
+  const selectedStore = modal.querySelector("[data-selected-store]");
   const link = modal.querySelector("[data-store-lookup]");
-  const chain = select?.value || "7-11";
+  const chain = shipping?.type === "store" ? shipping.chain : "";
+  if (storeInput) storeInput.value = chain;
+  if (selectedStore) selectedStore.textContent = chain;
   if (link) {
     link.href = STORE_LOOKUP_LINKS[chain] || STORE_LOOKUP_LINKS["7-11"];
-    link.textContent = `查詢 ${chain} 門市`;
+    link.textContent = chain ? `查詢 ${chain} 門市` : "查詢門市";
   }
 }
 
@@ -1034,8 +1088,12 @@ function updateOrderTotal() {
   const modal = ensureOrderModal();
   const subtotal = getCartSubtotal();
   const shipping = getSelectedShipping();
-  const total = subtotal + Number(shipping.fee || 0);
   const node = modal.querySelector("[data-order-total]");
+  if (!shipping) {
+    if (node) node.innerHTML = "<strong>目前沒有開放的配送方式</strong>";
+    return;
+  }
+  const total = subtotal + Number(shipping.fee || 0);
   if (node) {
     node.innerHTML = `
       <span>商品小計 ${escapeHtml(formatCompactMoney(subtotal))}</span>
@@ -1054,18 +1112,19 @@ function buildOrderPayload(form) {
     qty: Number(item.qty || 0),
     subtotal: Number(item.price || 0) * Number(item.qty || 0),
   }));
-  const shippingMethod = String(data.get("shippingMethod") || "home");
-  const shipping = SHIPPING_OPTIONS[shippingMethod] || SHIPPING_OPTIONS.home;
+  const shippingId = String(data.get("shippingMethod") || "");
+  const shipping = shippingSettings.find((item) => item.id === shippingId) || shippingSettings[0];
   const subtotal = getCartSubtotal();
-  const storeChain = String(data.get("storeChain") || "");
+  const storeChain = shipping?.type === "store" ? String(shipping.chain || "") : "";
 
   return {
     customerName: String(data.get("customerName") || "").trim(),
     customerPhone: String(data.get("customerPhone") || "").trim(),
     customerEmail: String(data.get("customerEmail") || "").trim(),
-    shippingMethod,
-    shippingLabel: shippingMethod === "home" ? "宅配" : `${storeChain || "店到店"} 店到店`,
-    shippingFee: Number(shipping.fee || 0),
+    shippingId: shipping?.id || "",
+    shippingMethod: shipping?.type || "",
+    shippingLabel: shipping?.label || "",
+    shippingFee: Number(shipping?.fee || 0),
     homeAddress: String(data.get("homeAddress") || "").trim(),
     storeChain,
     storeName: String(data.get("storeName") || "").trim(),
@@ -1091,6 +1150,10 @@ async function submitOrderForm(event) {
 
   if (!form.reportValidity()) return;
   const payload = buildOrderPayload(form);
+  if (!payload.shippingId) {
+    message.textContent = "目前沒有開放的配送方式，請先聯絡 MUWA。";
+    return;
+  }
   if (!payload.items.length) {
     message.textContent = "購物車目前是空的，請先加入商品。";
     return;
@@ -1400,6 +1463,7 @@ function readFileAsDataUrl(file) {
 
 loadProductFeed();
 loadWishShowcase();
+loadShippingSettings();
 ensureCartButton();
 updateCartButton();
 

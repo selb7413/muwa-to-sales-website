@@ -164,7 +164,8 @@
       .button.blue { background: var(--blue); }
       .button.small { min-height: 38px; padding: 0 12px; font-size: 14px; }
 
-      .showcase-admin {
+      .showcase-admin,
+      .shipping-admin {
         width: min(1248px, calc(100% - 32px));
         margin: 28px auto;
         padding: 24px;
@@ -216,6 +217,40 @@
       }
       .showcase-list-head { margin-top: 26px; }
       .showcase-list { display: grid; gap: 12px; margin-top: 24px; }
+      .shipping-admin-head {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+      .shipping-admin-head h2,
+      .shipping-admin-head p { margin-bottom: 0; }
+      .shipping-settings-list { display: grid; gap: 10px; }
+      .shipping-setting-row {
+        display: grid;
+        grid-template-columns: minmax(180px, 1fr) minmax(160px, .7fr);
+        gap: 16px;
+        align-items: center;
+        padding: 14px;
+        border: 3px solid var(--ink);
+        border-radius: var(--radius);
+        background: #fffaf0;
+      }
+      .shipping-toggle {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0;
+        color: var(--ink);
+        font-size: 16px;
+      }
+      .shipping-toggle input { width: 22px; min-height: 22px; accent-color: var(--orange); }
+      .shipping-fee-label { margin: 0; }
+      .shipping-fee-input { display: flex; align-items: center; gap: 8px; }
+      .shipping-fee-input strong { white-space: nowrap; }
+      .shipping-fee-input input { min-width: 0; }
+      .shipping-save-row { display: flex; align-items: center; gap: 16px; margin-top: 18px; }
       .showcase-item {
         display: grid;
         grid-template-columns: 110px minmax(0, 1fr) auto;
@@ -781,7 +816,8 @@
       @media (max-width: 640px) {
         .admin-bar, .site-header { align-items: flex-start; flex-direction: column; }
         .product-grid { grid-template-columns: 1fr; }
-        .field-row, .image-controls, .tabs, .purchase-editor-row, .variant-editor-row, .addon-editor-row, .purchase-line, .addon-option-row { grid-template-columns: 1fr; }
+        .field-row, .image-controls, .tabs, .purchase-editor-row, .variant-editor-row, .addon-editor-row, .purchase-line, .addon-option-row, .shipping-setting-row { grid-template-columns: 1fr; }
+        .shipping-admin-head, .shipping-save-row { align-items: stretch; flex-direction: column; }
         .save-actions { grid-template-columns: 1fr; }
         .item { grid-template-columns: 72px minmax(0, 1fr); }
         .item button { grid-column: 1 / -1; }
@@ -885,6 +921,23 @@
         <div class="hero-scene">
           <div class="product-placeholder">前台主視覺</div>
         </div>
+      </section>
+
+      <section class="shipping-admin" id="shippingAdmin">
+        <div class="shipping-admin-head">
+          <div>
+            <p class="section-kicker">結帳與物流</p>
+            <h2>配送方式與運費</h2>
+          </div>
+          <p>關閉後，前台不會顯示該配送方式。運費可填 0 元。</p>
+        </div>
+        <form id="shippingSettingsForm">
+          <div class="shipping-settings-list" id="shippingSettingsList"></div>
+          <div class="shipping-save-row">
+            <button class="button" type="submit">儲存配送設定</button>
+            <p class="message" id="shippingSettingsMessage" role="status" aria-live="polite">正在讀取設定...</p>
+          </div>
+        </form>
       </section>
 
       <section class="editor-panel hidden" id="editorPanel">
@@ -1039,6 +1092,9 @@
       const wishShowcaseAdmin = document.querySelector("#wishShowcaseAdmin");
       const jumpWishShowcase = document.querySelector("#jumpWishShowcase");
       const logout = document.querySelector("#logout");
+      const shippingSettingsForm = document.querySelector("#shippingSettingsForm");
+      const shippingSettingsList = document.querySelector("#shippingSettingsList");
+      const shippingSettingsMessage = document.querySelector("#shippingSettingsMessage");
       let adminUser = sessionStorage.getItem("muwaAdminUser") || "";
       let adminKey = sessionStorage.getItem("muwaAdminKey") || "";
       let previewImages = [];
@@ -1090,6 +1146,75 @@
         { name: "單個木架", price: 300 },
         { name: "飼料碗架一組", price: 799 },
       ];
+      const DEFAULT_SHIPPING_SETTINGS = [
+        { id: "home", label: "宅配", type: "home", chain: "", enabled: true, fee: 140, sort: 1 },
+        { id: "7-11", label: "7-11 店到店", type: "store", chain: "7-11", enabled: true, fee: 60, sort: 2 },
+        { id: "family", label: "全家店到店", type: "store", chain: "全家", enabled: true, fee: 60, sort: 3 },
+        { id: "hilife", label: "萊爾富店到店", type: "store", chain: "萊爾富", enabled: true, fee: 60, sort: 4 },
+      ];
+
+      function renderShippingSettings(settings) {
+        const saved = Array.isArray(settings) ? settings : [];
+        const savedMap = saved.reduce((map, item) => {
+          map[String(item.id || "")] = item;
+          return map;
+        }, {});
+        const rows = DEFAULT_SHIPPING_SETTINGS.map((item) => Object.assign({}, item, savedMap[item.id] || {}));
+        shippingSettingsList.innerHTML = rows.map((item) => `
+          <div class="shipping-setting-row" data-shipping-id="${escapeHtml(item.id)}">
+            <label class="shipping-toggle">
+              <input type="checkbox" data-shipping-enabled ${item.enabled ? "checked" : ""} />
+              <span>啟用 ${escapeHtml(item.label)}</span>
+            </label>
+            <label class="shipping-fee-label">
+              <span>運費</span>
+              <span class="shipping-fee-input"><strong>NT$</strong><input type="number" min="0" step="1" value="${Math.max(0, Number(item.fee || 0))}" data-shipping-fee required /></span>
+            </label>
+          </div>
+        `).join("");
+      }
+
+      function loadShippingSettings() {
+        if (!isGoogleRuntime()) {
+          renderShippingSettings(DEFAULT_SHIPPING_SETTINGS);
+          shippingSettingsMessage.textContent = "本機預覽使用預設運費；請在正式 Apps Script 後台儲存。";
+          return;
+        }
+        shippingSettingsMessage.textContent = "正在讀取設定...";
+        google.script.run
+          .withSuccessHandler((settings) => {
+            renderShippingSettings(settings);
+            shippingSettingsMessage.textContent = "設定已載入。";
+          })
+          .withFailureHandler((error) => {
+            renderShippingSettings(DEFAULT_SHIPPING_SETTINGS);
+            shippingSettingsMessage.textContent = `讀取失敗：${error.message}`;
+          })
+          .getShippingSettings();
+      }
+
+      shippingSettingsForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        if (!isGoogleRuntime()) {
+          shippingSettingsMessage.textContent = "本機預覽不能儲存，請到正式 Apps Script 後台操作。";
+          return;
+        }
+        const settings = Array.from(shippingSettingsList.querySelectorAll("[data-shipping-id]")).map((row) => ({
+          id: row.dataset.shippingId,
+          enabled: row.querySelector("[data-shipping-enabled]").checked,
+          fee: Number(row.querySelector("[data-shipping-fee]").value),
+        }));
+        shippingSettingsMessage.textContent = "正在儲存...";
+        google.script.run
+          .withSuccessHandler((result) => {
+            renderShippingSettings(result.settings);
+            shippingSettingsMessage.textContent = result.message || "配送設定已儲存。";
+          })
+          .withFailureHandler((error) => {
+            shippingSettingsMessage.textContent = `儲存失敗：${error.message}`;
+          })
+          .saveShippingSettings({ adminUser, adminKey, settings });
+      });
 
       function normalizePurchaseOption(item) {
         const optionGroups = Array.isArray(item?.optionGroups)
@@ -1362,6 +1487,7 @@
         adminShell.classList.remove("hidden");
         editorPanel.classList.remove("hidden");
         updatePreview();
+        loadShippingSettings();
         loadProducts();
         loadWishShowcases();
       }

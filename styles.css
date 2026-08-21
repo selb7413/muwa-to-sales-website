@@ -1372,6 +1372,12 @@ h3 {
   font-weight: 950;
 }
 
+[data-shipping-choices] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .field-label {
   display: inline-flex;
   align-items: baseline;
@@ -1416,6 +1422,17 @@ h3 {
 .shipping-fields {
   display: grid;
   gap: 12px;
+}
+
+.selected-store {
+  display: grid;
+  gap: 6px;
+  align-content: center;
+  min-height: 50px;
+  padding: 10px 12px;
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  background: #fffaf0;
 }
 
 .store-lookup {
@@ -2546,7 +2563,8 @@ label {
 
   .order-grid,
   .order-summary-row,
-  .order-total {
+  .order-total,
+  [data-shipping-choices] {
     grid-template-columns: 1fr;
   }
 
