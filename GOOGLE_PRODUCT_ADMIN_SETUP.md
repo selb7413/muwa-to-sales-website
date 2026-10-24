@@ -54,3 +54,14 @@ productFeedUrl: "你的 Web App URL",
 ## 注意
 
 這是輕量版後台，不是完整會員登入系統。管理密碼不會出現在網站前台，但 Web App 後台網址仍建議不要公開貼出。
+
+## 2026-10-24 訂單狀態通知（正式第 45 版）
+
+- 請使用 `muwa.to.sales@gmail.com` 帳號部署及執行 `setupOrderNotificationWorkflow`。程式會檢查實際執行帳號，身分不符就停止寄信。
+- 在「MUWA 訂單資料表」的 R 欄「通知狀態」選擇「已取消／已付款／已寄送」，會同步訂單狀態並寄送對應的 MUWA 小編通知。舊 C 欄訂單狀態操作仍相容。
+- 選擇「已付款」時，Q 欄自動記錄首次對帳的台灣時間；重複選取不覆寫。
+- U／S／T 分別保存付款／出貨／取消通知的寄送紀錄，各狀態只寄一次；V 欄是最後通知時間，W 欄是通知錯誤。寄送失敗時修正信箱或問題，再重新選取狀態重試。
+- 不要清除寄送紀錄欄位，以免重複寄信。設定流程只遷移舊紀錄，不會寄送歷史訂單。
+- 已安裝的編輯觸發器為 `handleOrderNotificationEdit_`，擁有者是 MUWA 帳號。
+- `Web App URL?action=serviceStatus` 應顯示 `senderReady: true` 與 `notificationVersion: "20261024-v2"`。
+- 驗證：`node tests/order-notification.cjs`（使用記憶體模擬，不寄真實郵件）。已另外取得授權寄三封狀態測試信，只寄至 MUWA 自己的信箱。

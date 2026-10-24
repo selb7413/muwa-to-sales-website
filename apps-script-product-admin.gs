@@ -12,6 +12,8 @@ const WISH_SHOWCASE_IMAGE_FOLDER_NAME = "MUWA 許願成功作品圖片";
 const ADMIN_USER = "muwa.to.sales";
 const ADMIN_KEY = "cindy31127";
 const ADMIN_NOTIFICATION_EMAILS = ["selb7413@gmail.com", "c83177@gmail.com"];
+const MUWA_SENDER_EMAIL = "muwa.to.sales@gmail.com";
+const ORDER_NOTIFICATION_OPTIONS = ["已取消", "已付款", "已寄送"];
 const ORDER_STATUS_OPTIONS = ["待對帳", "對帳成功", "已出貨", "取消"];
 const DEFAULT_SHIPPING_SETTINGS = [
   { id: "home", label: "宅配", type: "home", chain: "", enabled: true, fee: 140, sort: 1 },
@@ -22,6 +24,7 @@ const DEFAULT_SHIPPING_SETTINGS = [
 
 function doGet(e) {
   const action = e.parameter.action || "admin";
+  if (action === "serviceStatus") return outputServiceStatus_(e);
   if (action === "products") {
     return outputProducts_(e);
   }
@@ -432,6 +435,7 @@ function serializeSheetDate_(value) {
 }
 
 function createOrder_(payload) {
+  assertMuwaSender_();
   const sheet = getOrderSheet_();
   const items = Array.isArray(payload.items) ? payload.items : [];
   const customerName = String(payload.customerName || "").trim();
@@ -549,6 +553,7 @@ function createOrder_(payload) {
 }
 
 function createWishlist_(payload) {
+  assertMuwaSender_();
   const sheet = getWishlistSheet_();
   const wishTitle = String(payload.wishTitle || "").trim();
   const wishDetail = String(payload.wishDetail || "").trim();
@@ -651,14 +656,215 @@ function testAdminNotification() {
   );
 }
 
+function currentMuwaExecutionEmail_() {
+  return String(DriveApp.getRootFolder().getOwner().getEmail() || "").trim().toLowerCase();
+}
+
 function checkEmailSender() {
-  const aliases = GmailApp.getAliases();
-  const result = {
-    aliases,
-    note: "正式寄件者由 Web App 部署帳號與觸發器建立帳號決定。",
-  };
-  console.log(JSON.stringify(result, null, 2));
+  const effectiveUser = currentMuwaExecutionEmail_();
+  const result = { expectedSender: MUWA_SENDER_EMAIL, effectiveUser, senderReady: effectiveUser === MUWA_SENDER_EMAIL };
+  console.log(JSON.stringify(result));
   return result;
+}
+
+function assertMuwaSender_() {
+  const effectiveUser = currentMuwaExecutionEmail_();
+  if (effectiveUser !== MUWA_SENDER_EMAIL) {
+    throw new Error("寄件身分不符，已停止寄信。請使用 muwa.to.sales@gmail.com 部署並建立通知觸發器。");
+  }
+}
+
+function outputServiceStatus_(e) {
+  return outputCallback_(e.parameter.callback || "", {
+    ok: true,
+    sender: MUWA_SENDER_EMAIL,
+    senderReady: currentMuwaExecutionEmail_() === MUWA_SENDER_EMAIL,
+    notificationVersion: "20261024-v2",
+  });
+}
+
+function taipeiNotificationTime_(date) {
+  return Utilities.formatDate(date || new Date(), "Asia/Taipei", "yyyy/MM/dd HH:mm:ss");
+}
+
+function markOrderPaid(orderId, adminKey) {
+  assertAdmin_(ADMIN_USER, adminKey);
+  assertMuwaSender_();
+  const sheet = getOrderSheet_();
+  const headerMap = getHeaderMap_(sheet);
+  const rows = sheet.getDataRange().getValues();
+  for (let index = 1; index < rows.length; index += 1) {
+    if (String(rowValue_(rows[index], headerMap, "訂單編號")) === String(orderId)) {
+      return { ok: true, sent: processOrderNotification_(sheet, index + 1, "已付款") };
+    }
+  }
+  throw new Error("找不到訂單。");
+}
+
+function setupPaidNotificationTrigger() {
+  return setupOrderNotificationWorkflow();
+}
+
+function setupOrderNotificationWorkflow() {
+  assertMuwaSender_();
+  const sheet = getOrderSheet_();
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  let migrated;
+  try {
+    migrated = migrateLegacyNotificationRecords_(sheet);
+    applyOrderStatusDropdown_(sheet);
+    const headers = getHeaderMap_(sheet);
+    sheet.getRange(1, headers["通知狀態"]).setNote("選擇已取消、已付款或已寄送後，MUWA 會自動通知顧客。每個狀態只寄送一次，寄信紀錄保存在獨立欄位。");
+    sheet.getRange(1, headers["對帳時間"]).setNote("首次選擇已付款時自動填入，時間為台灣時間（Asia/Taipei，UTC+8）；重複選取不會覆蓋。");
+    sheet.getRange(1, headers["最後通知時間"]).setNote("顧客通知成功寄出時記錄，使用台灣時間（UTC+8）。");
+    sheet.setColumnWidth(headers["通知狀態"], 130);
+    sheet.setColumnWidth(headers["對帳時間"], 180);
+    sheet.setColumnWidth(headers["最後通知時間"], 180);
+    sheet.setColumnWidth(headers["通知錯誤"], 260);
+  } finally {
+    lock.releaseLock();
+  }
+  const handlers = ["handlePaidStatusEdit_", "handleOrderNotificationEdit_"];
+  ScriptApp.getProjectTriggers().forEach((trigger) => {
+    if (handlers.includes(trigger.getHandlerFunction())) ScriptApp.deleteTrigger(trigger);
+  });
+  ScriptApp.newTrigger("handleOrderNotificationEdit_")
+    .forSpreadsheet(SpreadsheetApp.openById(PRODUCT_SHEET_ID)).onEdit().create();
+  const result = { ok: true, sender: MUWA_SENDER_EMAIL, migrated, message: "訂單通知已設定，未寄出任何歷史訂單通知。" };
+  console.log(JSON.stringify(result));
+  return result;
+}
+
+function migrateLegacyNotificationRecords_(sheet) {
+  const properties = PropertiesService.getScriptProperties();
+  const migrationKey = "MUWA_ORDER_NOTIFICATION_SCHEMA_V2";
+  if (properties.getProperty(migrationKey)) return 0;
+  const headers = getHeaderMap_(sheet);
+  const rows = sheet.getDataRange().getValues();
+  let migrated = 0;
+  rows.slice(1).forEach((row, index) => {
+    if (!rowValue_(row, headers, "訂單編號")) return;
+    const oldNotification = String(rowValue_(row, headers, "通知狀態") || "").trim();
+    const orderStatus = String(rowValue_(row, headers, "狀態") || "").trim();
+    if (oldNotification === "已寄送" && !rowValue_(row, headers, "付款通知狀態")) {
+      sheet.getRange(index + 2, headers["付款通知狀態"]).setValue("已寄送");
+      const target = normalizeOrderNotificationStatus_(orderStatus) || "已付款";
+      sheet.getRange(index + 2, headers["通知狀態"]).setValue(target);
+      migrated += 1;
+    }
+  });
+  properties.setProperty(migrationKey, taipeiNotificationTime_());
+  return migrated;
+}
+
+function normalizeOrderNotificationStatus_(status) {
+  return ({ "已付款": "已付款", "對帳成功": "已付款", "已寄送": "已寄送", "已出貨": "已寄送", "已取消": "已取消", "取消": "已取消" })[String(status || "").trim()] || "";
+}
+
+function handlePaidStatusEdit_(e) {
+  return handleOrderNotificationEdit_(e);
+}
+
+function handleOrderNotificationEdit_(e) {
+  if (!e || !e.range) return;
+  // Legacy triggers belonging to another account must neither send nor modify the row.
+  if (currentMuwaExecutionEmail_() !== MUWA_SENDER_EMAIL) return;
+  const sheet = e.range.getSheet();
+  if (sheet.getName() !== ORDER_SHEET_NAME || e.range.getLastRow() < 2) return;
+  const headers = getHeaderMap_(sheet);
+  const firstColumn = e.range.getColumn();
+  const lastColumn = e.range.getLastColumn();
+  const notificationEdited = headers["通知狀態"] >= firstColumn && headers["通知狀態"] <= lastColumn;
+  const orderStatusEdited = headers["狀態"] >= firstColumn && headers["狀態"] <= lastColumn;
+  if (!notificationEdited && !orderStatusEdited) return;
+  for (let rowNumber = Math.max(2, e.range.getRow()); rowNumber <= e.range.getLastRow(); rowNumber += 1) {
+    const column = notificationEdited ? headers["通知狀態"] : headers["狀態"];
+    const status = normalizeOrderNotificationStatus_(sheet.getRange(rowNumber, column).getValue());
+    if (status) processOrderNotification_(sheet, rowNumber, status);
+  }
+}
+
+function notificationConfig_(status) {
+  return {
+    "已付款": { recordHeader: "付款通知狀態", orderStatus: "對帳成功" },
+    "已寄送": { recordHeader: "出貨通知狀態", orderStatus: "已出貨" },
+    "已取消": { recordHeader: "取消通知狀態", orderStatus: "取消" },
+  }[status];
+}
+
+function processOrderNotification_(sheet, rowNumber, status) {
+  assertMuwaSender_();
+  const config = notificationConfig_(status);
+  if (!config) throw new Error("通知狀態請選擇已取消、已付款或已寄送。");
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  let headers;
+  try {
+    headers = getHeaderMap_(sheet);
+    const row = sheet.getRange(rowNumber, 1, 1, sheet.getLastColumn()).getValues()[0];
+    if (!rowValue_(row, headers, "訂單編號")) return false;
+    sheet.getRange(rowNumber, headers["通知狀態"]).setValue(status);
+    sheet.getRange(rowNumber, headers["狀態"]).setValue(config.orderStatus);
+    if (status === "已付款" && !rowValue_(row, headers, "對帳時間")) {
+      sheet.getRange(rowNumber, headers["對帳時間"]).setNumberFormat("@").setValue(taipeiNotificationTime_());
+    }
+    if (String(rowValue_(row, headers, config.recordHeader) || "").trim() === "已寄送") return false;
+    const email = String(rowValue_(row, headers, "電子信箱") || "").trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error("顧客電子信箱空白或格式錯誤，未寄出通知。");
+    const message = buildOrderNotificationEmail_(row, headers, status);
+    sendMuwaEmail_(email, message.subject, message.body);
+    sheet.getRange(rowNumber, headers[config.recordHeader]).setValue("已寄送");
+    sheet.getRange(rowNumber, headers["最後通知時間"]).setNumberFormat("@").setValue(taipeiNotificationTime_());
+    sheet.getRange(rowNumber, headers["通知錯誤"]).clearContent();
+    return true;
+  } catch (error) {
+    if (headers && headers["通知錯誤"]) sheet.getRange(rowNumber, headers["通知錯誤"]).setValue(String(error.message || error).slice(0, 500));
+    throw error;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function sendPaidOrderEmailForRow_(sheet, rowNumber) {
+  return processOrderNotification_(sheet, rowNumber, "已付款");
+}
+
+function sendPaidOrderEmails() {
+  // Historical orders are never sent in bulk. Notifications are driven by explicit row edits.
+  throw new Error("已停用歷史訂單批次寄信。請在通知狀態下拉選單選擇已付款。");
+}
+
+function buildOrderNotificationEmail_(row, headers, status) {
+  const orderId = String(rowValue_(row, headers, "訂單編號") || "");
+  const name = String(rowValue_(row, headers, "姓名") || "顧客");
+  const total = Number(rowValue_(row, headers, "應付總額") || 0).toLocaleString("zh-TW");
+  const shipping = String(rowValue_(row, headers, "運送方式") || "依訂單選擇的配送方式");
+  const signature = "MUWA 小編\n官方 LINE：@110ayyzu";
+  const messages = {
+    "已付款": {
+      subject: `【MUWA】款項收到了，謝謝你！｜訂單 ${orderId}`,
+      body: `${name} 您好：\n\n我們已確認收到你的訂單款項，謝謝你！\u{1F337}\n\n訂單編號：${orderId}\n付款金額：NT$${total}\n\n接下來，我們會依照訂購內容安排製作或出貨。\n\n若你訂購的是客製商品，也請透過官方 LINE 與我們確認設計細節，讓成品更貼近你心裡的樣子。\n\n有任何想確認的地方，歡迎直接回信，或到官方 LINE 找我們。\n\n謝謝你讓 MUWA 參與你的日常。\n\n${signature}`,
+    },
+    "已寄送": {
+      subject: `【MUWA】你的商品出發囉！｜訂單 ${orderId}`,
+      body: `${name} 您好：\n\n來跟你分享一個好消息，你的 MUWA 商品已經寄出囉！\n\n訂單編號：${orderId}\n配送方式：${shipping}\n\n接下來請留意物流配送訊息；若選擇超商取貨，請等收到到店通知後，再前往領取。\n\n收到商品後，若有任何需要我們協助的地方，歡迎直接回信或透過官方 LINE 聯絡，我們會協助你確認。\n\n謝謝你的等待，期待這份小物為你的日常添一點喜歡。\n\n${signature}`,
+    },
+    "已取消": {
+      subject: `【MUWA】訂單取消確認｜訂單 ${orderId}`,
+      body: `${name} 您好：\n\n跟你確認一下，你的訂單已完成取消。\n\n訂單編號：${orderId}\n\n如果這與你預期的不同，或你還想調整商品、重新訂購，歡迎回信或透過官方 LINE 告訴我們，我們會陪你一起確認。\n\n若這筆訂單已完成付款，也請與我們聯絡，方便核對款項並確認後續處理方式。\n\n謝謝你曾經考慮讓 MUWA 參與你的日常，期待之後還有機會為你服務。\n\n${signature}`,
+    },
+  };
+  if (!messages[status]) throw new Error("不支援的通知狀態。");
+  return messages[status];
+}
+
+function sendMuwaEmail_(to, subject, body, options) {
+  assertMuwaSender_();
+  const sendOptions = Object.assign({ name: "MUWA" }, options || {}, { replyTo: MUWA_SENDER_EMAIL });
+  // The primary Gmail account supplies the actual From address; do not fall back to an alias.
+  delete sendOptions.from;
+  GmailApp.sendEmail(to, subject, body, sendOptions);
 }
 
 function generateOrderId_(sheet) {
@@ -674,164 +880,6 @@ function generateOrderId_(sheet) {
   }
 
   throw new Error("訂單編號產生失敗，請重新送出一次。");
-}
-
-function markOrderPaid(orderId, adminKey) {
-  assertAdmin_(ADMIN_USER, adminKey);
-
-  const sheet = getOrderSheet_();
-  const headerMap = getHeaderMap_(sheet);
-  const values = sheet.getDataRange().getValues();
-  for (let row = 1; row < values.length; row += 1) {
-    if (String(rowValue_(values[row], headerMap, "訂單編號")) === String(orderId)) {
-      sheet.getRange(row + 1, headerMap["狀態"]).setValue("對帳成功");
-      sendPaidOrderEmailForRow_(sheet, row + 1, headerMap);
-      return { ok: true };
-    }
-  }
-
-  throw new Error("找不到訂單。");
-}
-
-function setupPaidNotificationTrigger() {
-  const spreadsheet = SpreadsheetApp.openById(PRODUCT_SHEET_ID);
-  ScriptApp.getProjectTriggers().forEach((trigger) => {
-    if (trigger.getHandlerFunction() === "handlePaidStatusEdit_") {
-      ScriptApp.deleteTrigger(trigger);
-    }
-  });
-
-  ScriptApp.newTrigger("handlePaidStatusEdit_")
-    .forSpreadsheet(spreadsheet)
-    .onEdit()
-    .create();
-
-  return { ok: true, message: "訂單狀態自動通知已啟用。" };
-}
-
-function handlePaidStatusEdit_(e) {
-  if (!e || !e.range) return;
-
-  const sheet = e.range.getSheet();
-  if (sheet.getName() !== ORDER_SHEET_NAME) return;
-
-  ensureOrderNotificationHeaders_(sheet);
-  const headerMap = getHeaderMap_(sheet);
-  const statusColumn = headerMap["狀態"];
-  if (!statusColumn) return;
-  if (e.range.getRow() <= 1 || e.range.getColumn() !== statusColumn) return;
-
-  const status = String(e.range.getValue() || "").trim();
-  if (status === "對帳成功") {
-    sendPaidOrderEmailForRow_(sheet, e.range.getRow(), headerMap);
-    return;
-  }
-  if (status === "已出貨") {
-    sendOrderStatusEmailForRow_(sheet, e.range.getRow(), headerMap, {
-      notificationHeader: "出貨通知狀態",
-      sendEmail: sendShippedEmail_,
-    });
-    return;
-  }
-  if (status === "取消") {
-    sendOrderStatusEmailForRow_(sheet, e.range.getRow(), headerMap, {
-      notificationHeader: "取消通知狀態",
-      sendEmail: sendCancelledEmail_,
-    });
-  }
-}
-
-function sendPaidOrderEmails() {
-  const sheet = getOrderSheet_();
-  const headerMap = getHeaderMap_(sheet);
-  const values = sheet.getDataRange().getValues();
-  let sent = 0;
-
-  for (let row = 1; row < values.length; row += 1) {
-    const status = String(rowValue_(values[row], headerMap, "狀態") || "").trim();
-    const notificationStatus = String(rowValue_(values[row], headerMap, "通知狀態") || "").trim();
-    if (status !== "對帳成功" || notificationStatus === "已寄送") continue;
-
-    sendPaidOrderEmailForRow_(sheet, row + 1, headerMap);
-    sent += 1;
-  }
-
-  return { ok: true, sent };
-}
-
-function sendPaidOrderEmailForRow_(sheet, rowNumber, headerMap) {
-  const row = sheet.getRange(rowNumber, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const notificationStatus = String(rowValue_(row, headerMap, "通知狀態") || "").trim();
-  if (notificationStatus === "已寄送") return false;
-
-  sendPaidEmail_(row, headerMap);
-
-  if (headerMap["對帳時間"] && !rowValue_(row, headerMap, "對帳時間")) {
-    sheet.getRange(rowNumber, headerMap["對帳時間"]).setValue(new Date());
-  }
-  if (headerMap["通知狀態"]) {
-    sheet.getRange(rowNumber, headerMap["通知狀態"]).setValue("已寄送");
-  }
-
-  return true;
-}
-
-function sendPaidEmail_(row, headerMap) {
-  const orderId = String(rowValue_(row, headerMap, "訂單編號") || "");
-  const name = String(rowValue_(row, headerMap, "姓名") || "");
-  const email = String(rowValue_(row, headerMap, "電子信箱") || "");
-  const total = Number(rowValue_(row, headerMap, "應付總額") || 0);
-  if (!email) return;
-
-  sendMuwaEmail_(
-    email,
-    `MUWA 訂單 ${orderId} 對帳成功`,
-    `${name} 您好：\n\nMUWA 已確認收到訂單 ${orderId} 的款項。\n訂單金額：NT$${total.toLocaleString("zh-TW")}\n\n接下來我們會依照訂單資訊安排出貨，謝謝你讓 MUWA 參與你的日常。\n\nMUWA`,
-    { name: "MUWA" }
-  );
-}
-
-function sendOrderStatusEmailForRow_(sheet, rowNumber, headerMap, config) {
-  const row = sheet.getRange(rowNumber, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const notificationStatus = String(rowValue_(row, headerMap, config.notificationHeader) || "").trim();
-  if (notificationStatus === "已寄送") return false;
-
-  config.sendEmail(row, headerMap);
-  sheet.getRange(rowNumber, headerMap[config.notificationHeader]).setValue("已寄送");
-  return true;
-}
-
-function sendShippedEmail_(row, headerMap) {
-  const orderId = String(rowValue_(row, headerMap, "訂單編號") || "");
-  const name = String(rowValue_(row, headerMap, "姓名") || "");
-  const email = String(rowValue_(row, headerMap, "電子信箱") || "");
-  if (!email) return;
-
-  sendMuwaEmail_(
-    email,
-    `MUWA 訂單 ${orderId} 已出貨`,
-    `${name} 您好：\n\n您在 MUWA 的訂單 ${orderId} 已經完成出貨。\n\n我們已仔細確認並包裝您的商品，接下來請留意物流或超商取貨通知。收到商品後若有任何問題，歡迎透過 MUWA 官方 LINE 與我們聯絡，我們會協助您處理。\n\n謝謝您選擇 MUWA，也謝謝您讓我們參與您的日常。\n\nMUWA`,
-    { name: "MUWA" }
-  );
-}
-
-function sendCancelledEmail_(row, headerMap) {
-  const orderId = String(rowValue_(row, headerMap, "訂單編號") || "");
-  const name = String(rowValue_(row, headerMap, "姓名") || "");
-  const email = String(rowValue_(row, headerMap, "電子信箱") || "");
-  if (!email) return;
-
-  sendMuwaEmail_(
-    email,
-    `MUWA 訂單 ${orderId} 取消通知`,
-    `${name} 您好：\n\n您在 MUWA 的訂單 ${orderId} 已經取消。\n\n若您對訂單取消原因有疑問，或仍希望重新確認商品與訂購內容，歡迎透過 MUWA 官方 LINE 與我們聯絡，我們會協助您處理。\n\n謝謝您的理解，也期待之後還有機會為您服務。\n\nMUWA`,
-    { name: "MUWA" }
-  );
-}
-
-function sendMuwaEmail_(to, subject, body, options) {
-  const sendOptions = Object.assign({ name: "MUWA" }, options || {});
-  GmailApp.sendEmail(to, subject, body, sendOptions);
 }
 
 function getHeaderMap_(sheet) {
@@ -961,7 +1009,7 @@ function getOrderSheet_() {
 }
 
 function ensureOrderNotificationHeaders_(sheet) {
-  const requiredHeaders = ["出貨通知狀態", "取消通知狀態"];
+  const requiredHeaders = ["出貨通知狀態", "取消通知狀態", "付款通知狀態", "最後通知時間", "通知錯誤"];
   const headerMap = getHeaderMap_(sheet);
   requiredHeaders.forEach((header) => {
     if (!headerMap[header]) {
@@ -982,6 +1030,11 @@ function applyOrderStatusDropdown_(sheet) {
     .build();
 
   sheet.getRange(2, statusColumn, maxRows, 1).setDataValidation(rule);
+  if (headerMap["通知狀態"]) {
+    const notificationRule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(ORDER_NOTIFICATION_OPTIONS, true).setAllowInvalid(false).build();
+    sheet.getRange(2, headerMap["通知狀態"], maxRows, 1).setDataValidation(notificationRule);
+  }
 }
 
 function getWishlistSheet_() {
@@ -1054,6 +1107,9 @@ function getOrderHeaders_() {
     "通知狀態",
     "出貨通知狀態",
     "取消通知狀態",
+    "付款通知狀態",
+    "最後通知時間",
+    "通知錯誤",
   ];
 }
 
