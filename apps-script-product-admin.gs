@@ -147,6 +147,12 @@ function setupOrderStatusDropdown() {
   return { ok: true, message: "訂單狀態下拉選單已套用。" };
 }
 
+function normalizeProductStatus_(status) {
+  if (status === "上架" || !status) return "現貨";
+  if (["現貨", "補貨中", "售完"].includes(status)) return status;
+  throw new Error("商品狀態請選擇補貨中、售完或現貨。");
+}
+
 function saveProduct(payload) {
   assertAdmin_(payload.adminUser, payload.adminKey);
 
@@ -156,7 +162,7 @@ function saveProduct(payload) {
   const imageUrls = saveProductImages_(payload, id);
   const rowValues = [
     id,
-    payload.status || "草稿",
+    normalizeProductStatus_(payload.status),
     payload.name || "",
     payload.category || "全部",
     normalizePrice_(payload.price),
@@ -264,7 +270,9 @@ function deleteWishShowcase(id, adminKey) {
 }
 
 function outputProducts_(e) {
-  const products = readProducts_().filter((item) => item.status === "上架");
+  const products = readProducts_()
+    .filter((item) => ["上架", "現貨", "補貨中", "售完"].includes(item.status))
+    .map((item) => Object.assign({}, item, { status: normalizeProductStatus_(item.status) }));
   const callback = e.parameter.callback;
   const body = JSON.stringify({ products });
 
@@ -444,6 +452,17 @@ function createOrder_(payload) {
   if (!items.length) {
     throw new Error("訂單沒有商品，請先加入商品。");
   }
+
+  // Recheck availability when placing an order, including carts opened before a status change.
+  const products = readProducts_();
+  items.forEach((item) => {
+    const product = item.productKey
+      ? products.find((product) => String(product.id || product.name) === String(item.productKey))
+      : products.find((product) => product.name === item.productName);
+    if (product?.status === "售完") {
+      throw new Error(`「${product.name}」已售完，請從購物車移除後再結帳。`);
+    }
+  });
 
   const requestedShippingId = String(payload.shippingId || "").trim();
   const homeAddress = String(payload.homeAddress || "").trim();

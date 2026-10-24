@@ -886,6 +886,125 @@
         select,
         textarea { font-size: 13px; }
       }
+
+/* Product status is shown in both the storefront and the admin preview. */
+.product-status {
+  display: block; width: fit-content; margin: 0; color: #536a63;
+  font-size: 12px; line-height: 1.6; font-weight: 800;
+}
+.product-status[data-status="補貨中"] { color: #99501d; }
+.product-status[data-status="售完"] { color: #666; }
+.detail-status { margin: 8px 0; }
+.product-meta { flex-wrap: wrap; }
+.product-card.is-sold-out:hover { transform: none; }
+.product-card.is-sold-out .product-open { cursor: default; opacity: 1; }
+.product-card.is-sold-out .product-visual { background: #e8e8e8; }
+.product-card.is-sold-out .image-frame { filter: grayscale(1); opacity: .35; }
+.product-card.is-sold-out .product-visual::after {
+  content: ""; position: absolute; inset: 0; width: auto; height: auto;
+  border: 0; border-radius: 0; transform: none; background: rgba(230,230,230,.25);
+  pointer-events: none;
+}
+.product-card.is-sold-out .product-category-badge { background: #e3e3e3; }
+.product-card.is-sold-out .product-detail-pill { background: #e3e3e3; color: #555; }
+.detail-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.detail-actions .button { flex: 1 1 150px; min-width: 0; }
+
+      /* Workspace layout: fields follow storefront order; preview responds to its own width. */
+      html { scroll-padding-top: 110px; }
+      body { line-height: 1.6; }
+      button, input, select, textarea { min-width: 0; }
+      button { white-space: normal; line-height: 1.5; }
+      h1, h2, h3, p, label, legend, .message { overflow-wrap: anywhere; }
+      h1, h2, h3 { line-height: 1.4; }
+      .button { height: auto; padding: 9px 14px; text-decoration: none; }
+      .admin-bar { flex-wrap: wrap; margin: 20px auto; width: min(1560px, calc(100% - 40px)); }
+      .admin-bar strong { font-size: 20px; }
+      .admin-intro { width: min(1560px, calc(100% - 40px)); margin: 36px auto; }
+      .admin-intro h1 { font-size: clamp(24px, 3vw, 34px); }
+      .admin-section-nav { display: flex; flex-wrap: wrap; gap: 10px 22px; }
+      .admin-section-nav a { color: var(--ink); font-weight: 850; text-underline-offset: 5px; }
+      .local-preview-note { padding: 12px 16px; margin: 22px 0 0; background: #fff3df; border: 2px solid var(--orange); }
+      .product-section { padding: 32px max(20px, calc((100% - 1560px) / 2)); }
+      .catalog-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; align-items: end; }
+      .catalog-heading h2 { margin-bottom: 16px; }
+      .product-grid { max-width: none; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
+      .product-card { border-radius: 8px; display: flex; flex-direction: column; }
+      .product-open { display: grid; grid-template-rows: auto 1fr; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; }
+      .product-card .product-copy { display: flex; flex: 1; min-height: 220px; flex-direction: column; gap: 18px; justify-content: space-between; padding: 20px; }
+      .product-copy-main { display: grid; gap: 8px; }
+      .product-copy h3 { margin: 0; font-size: 18px; line-height: 1.35; }
+      .product-copy-main > span { font-size: 14px; line-height: 1.75; font-weight: 400; white-space: pre-line; color: var(--muted); }
+      .product-visual { width: 100%; min-height: 0; }
+      .product-category-badge { position: absolute; z-index: 2; top: 12px; left: 12px; max-width: calc(100% - 24px); padding: 5px 10px; background: var(--tan); border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); font-size: 14px; font-weight: 950; }
+      .product-meta { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: auto; }
+      .product-meta strong { background: var(--ink); color: #fff; padding: 6px 10px; border-radius: 999px; font-size: 13px; }
+      .product-detail-pill { background: var(--orange); color: #fff; padding: 3px 10px; border: 3px solid var(--ink); border-radius: 999px; font-size: 13px; font-weight: 950; }
+      .list-panel { width: min(1560px, calc(100% - 40px)); padding: 20px; }
+      .list-panel summary { font-size: 17px; font-weight: 850; cursor: pointer; }
+      .list { margin-top: 20px; }
+      .item > *, .showcase-item > *, .shipping-setting-row > * { min-width: 0; }
+      .editor-panel { width: min(1560px, calc(100% - 40px)); padding: 24px; }
+      .editor-grid { grid-template-columns: minmax(340px, .8fr) minmax(0, 1.6fr); gap: 28px; }
+      .editor-grid > *, .preview-stack > *, .field-row > *, .purchase-editor-row > *, .addon-editor-row > *, .variant-editor-row > * { min-width: 0; }
+      .editor-group { min-width: 0; margin: 0 0 24px; padding: 20px 16px 10px; border: 2px solid #d5c6b0; border-radius: 8px; }
+      .editor-group legend { padding: 0 8px; font-weight: 850; font-size: 16px; }
+      .editor-group .field-note { margin: 8px 0 16px; }
+      .editor-group input, .editor-group select, .editor-group textarea { font-size: 14px; font-weight: 650; line-height: 1.6; }
+      .editor-group label { font-weight: 750; line-height: 1.6; }
+      .purchase-editor-row, .addon-editor-row, .variant-editor-row { grid-template-columns: minmax(0, 1fr); }
+      .purchase-editor-row > .button, .addon-editor-row > .button, .variant-editor-row > .button { justify-self: end; }
+      .image-picked { margin: 18px 0; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .image-picked div { min-height: 0; aspect-ratio: 29 / 20; }
+      .image-picked img { display: block; object-fit: contain; }
+      .preview-stack { container-type: inline-size; }
+      .preview-stack { position: sticky; top: 110px; max-height: calc(100dvh - 134px); overflow: auto; padding: 0 12px 12px 0; scrollbar-gutter: stable; }
+      .preview-switch { display: flex; flex-wrap: wrap; gap: 10px; position: sticky; top: 0; z-index: 3; padding: 10px 0; background: var(--paper); }
+      .preview-switch .is-active { background: var(--orange); color: white; }
+      .preview-card { padding: 20px; }
+      .preview-card .product-card { width: min(360px, 100%); margin: 0 auto; }
+      .detail-preview-wrap > h3 { margin-top: 12px; }
+      .detail-panel { width: 100%; padding: 24px; gap: 24px; grid-template-columns: minmax(0, 1fr); overflow: visible; }
+      .detail-preview-head { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 12px; }
+      .detail-preview-head .drag-hint { margin: 0; }
+      .detail-main { aspect-ratio: 29 / 20; min-height: 0; }
+      .detail-info h2 { margin: 8px 0 12px; font-size: 26px; }
+      .detail-price { display: block; font-size: 24px; line-height: 1.4; }
+      .purchase-line, .addon-option-row { grid-template-columns: minmax(0, 1fr) auto; }
+      .purchase-subtotal, .addon-option-row > strong { grid-column: 1 / -1; justify-self: end; }
+      .purchase-option-name { min-width: 0; overflow-wrap: anywhere; }
+      .tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+      .tabs button { padding: 10px 4px; overflow-wrap: anywhere; }
+      .tab-panel { text-align: left; }
+      .preview-save-row { justify-content: flex-start; flex-wrap: wrap; }
+      .save-status-pill { max-width: 100%; padding: 12px; margin: 0; height: auto; line-height: 1.7; }
+      .save-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+      .shipping-admin, .showcase-admin { width: min(1560px, calc(100% - 40px)); }
+      .showcase-admin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      @container (min-width: 820px) {
+        .detail-panel { grid-template-columns: minmax(0, 1fr) minmax(0, .9fr); }
+      }
+      @media (max-width: 1100px) {
+        .editor-grid { grid-template-columns: minmax(0, 1fr); }
+        .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .preview-stack { position: static; max-height: none; overflow: visible; padding-right: 0; }
+      }
+      @media (max-width: 640px) {
+        html { scroll-padding-top: 20px; }
+        .admin-bar { position: static; }
+        .admin-bar, .admin-intro, .editor-panel, .list-panel, .shipping-admin, .showcase-admin { width: calc(100% - 32px); }
+        .admin-actions { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .admin-actions .button { width: 100%; }
+        .product-grid, .showcase-admin-grid, .shipping-setting-row { grid-template-columns: minmax(0, 1fr); }
+        .editor-panel, .preview-card, .detail-panel, .shipping-admin, .showcase-admin { padding: 16px; }
+        .editor-group { padding: 16px 10px 8px; }
+        .field-row, .image-controls { grid-template-columns: minmax(0, 1fr); }
+        .item, .showcase-item { grid-template-columns: minmax(0, 1fr); }
+        .item-actions, .showcase-item-actions { grid-column: 1 / -1; justify-content: flex-start; }
+        .purchase-line, .addon-option-row { grid-template-columns: minmax(0, 1fr); }
+        .option-qty { width: fit-content; }
+        .detail-info h2 { font-size: 22px; }
+      }
     </style>
   </head>
   <body>
@@ -912,117 +1031,91 @@
         </div>
       </div>
 
-      <header class="site-header">
-        <img class="brand-logo" src="https://drive.google.com/thumbnail?id=1" alt="MUWA" />
-        <nav class="nav-links" aria-label="頁面區塊">
-          <a href="#products">商品</a>
-          <a href="#wishlist">許願池</a>
-          <a href="#about">關於我們</a>
+      <div class="admin-intro">
+        <p class="section-kicker">商品管理</p>
+        <h1>照著前台，編輯你的商品。</h1>
+        <p>點選商品卡片開始編輯。欄位修改會即時呈現在預覽，按「儲存商品」後才會更新前台。</p>
+        <nav class="admin-section-nav" aria-label="後台區塊">
+          <a href="#products">商品列表</a><a href="#editorPanel">商品編輯</a>
+          <a href="#wishShowcaseAdmin">許願作品</a><a href="#shippingAdmin">配送與運費</a>
         </nav>
-      </header>
+        <p class="local-preview-note hidden" id="localPreviewNote">本機預覽模式：可查看、編輯預覽；正式資料不會被修改。</p>
+      </div>
 
-      <section class="hero">
-        <div>
-          <p class="quiet-line" contenteditable="true">不是每個商品，都能變成自己的日常。</p>
-          <h1 contenteditable="true">不只是商品，<br />是有你參與的日常。</h1>
-          <p class="hero-lede" contenteditable="true">MUWA 希望身邊使用的東西，不只是買來的物品，而是能多一點自己的偏好、個性與故事。</p>
-          <button class="button" type="button" id="jumpProducts">看看已上架商品</button>
-        </div>
-        <div class="hero-scene">
-          <div class="product-placeholder">前台主視覺</div>
-        </div>
+      <section class="product-section" id="products">
+        <div class="catalog-heading"><div><p class="section-kicker">前台商品列表</p><h2>點選商品，直接編輯</h2></div>
+        <p>與前台相同的排列順序。售完商品仍可在後台編輯。</p></div>
+        <div class="product-grid" id="productGrid"></div>
       </section>
-
-      <section class="shipping-admin" id="shippingAdmin">
-        <div class="shipping-admin-head">
-          <div>
-            <p class="section-kicker">結帳與物流</p>
-            <h2>配送方式與運費</h2>
-          </div>
-          <p>關閉後，前台不會顯示該配送方式。運費可填 0 元。</p>
-        </div>
-        <form id="shippingSettingsForm">
-          <div class="shipping-settings-list" id="shippingSettingsList"></div>
-          <div class="shipping-save-row" id="shippingSaveRow">
-            <button class="button" id="shippingSaveButton" type="submit">儲存配送設定</button>
-            <p class="message" id="shippingSettingsMessage" role="status" aria-live="polite">正在讀取設定...</p>
-          </div>
-        </form>
-      </section>
+      <details class="list-panel"><summary>所有商品與管理操作</summary><div class="list" id="list"></div></details>
 
       <section class="editor-panel hidden" id="editorPanel">
         <div class="editor-grid">
           <form id="productForm">
-            <p class="section-kicker">新增商品</p>
-            <h2>直接填，右邊即時預覽</h2>
-            <div class="field-row">
+            <p class="section-kicker" id="productEditorMode">商品編輯</p>
+            <h2 id="productEditorTitle">新增商品</h2>
+            <p class="field-note">依照前台的照片、商品卡片與購買區塊順序填寫。</p>
+            <fieldset class="editor-group">
+              <legend>01 商品照片</legend>
+              <p class="field-note">封面與前台皆為 29:20。第一張照片作為商品封面。</p>
+              <input class="hidden" name="images" type="file" accept="image/*" />
+              <button class="button secondary" type="button" id="addImage">新增照片</button>
+              <div class="image-picked" id="pickedImages"></div>
+              <p class="field-note">點縮圖切換預覽；按 × 移除照片。</p>
+              <div class="image-controls">
+                <label>水平位置 <input name="imageX" type="range" min="0" max="100" value="50" /></label>
+                <label>垂直位置 <input name="imageY" type="range" min="0" max="100" value="50" /></label>
+                <input class="hidden" name="imageScale" type="range" min="100" max="180" value="100" />
+              </div>
+            </fieldset>
+            <fieldset class="editor-group">
+              <legend>02 商品卡片</legend>
               <label>商品名稱 <input name="name" required placeholder="例如：毛毛寶盒" /></label>
-              <label>分類 <input name="category" value="全部" /></label>
-            </div>
-            <div class="field-row">
-              <label>價格數字 <input name="price" type="number" min="0" inputmode="numeric" placeholder="例如：2400" /></label>
-              <label>狀態
-                <select name="status">
-                  <option>草稿</option>
-                  <option>上架</option>
-                  <option>售完</option>
-                  <option>補貨中</option>
-                </select>
+              <div class="field-row">
+                <label>分類 <input name="category" value="全部" /></label>
+                <label>排序 <input name="sort" type="number" value="999" /></label>
+              </div>
+              <label>商品狀態
+                <select name="status"><option>補貨中</option><option>售完</option><option selected>現貨</option></select>
               </label>
-            </div>
-            <label class="hidden">購買細項與價格
-              <textarea name="purchaseOptions"></textarea>
-            </label>
-            <div>
-              <p class="field-note">購買細項與價格。前台商品卡會自動顯示最低到最高價，商品詳情會讓客人分別選數量。</p>
+              <p class="field-note">三種狀態都會顯示在前台。售完時封面淡灰，顧客無法點入；補貨中仍可查看及購買。</p>
+              <label>商品短描述 <textarea name="description" required placeholder="會顯示在商品卡片與詳情開頭。"></textarea></label>
+            </fieldset>
+            <fieldset class="editor-group">
+              <legend>03 規格、價格與加購</legend>
+              <label>基本價格 <input name="price" type="number" min="0" inputmode="numeric" placeholder="例如：2400" /></label>
+              <label class="hidden">購買細項與價格<textarea name="purchaseOptions"></textarea></label>
+              <p class="field-note">有多種規格時，商品卡片會自動顯示價格範圍。</p>
               <div class="purchase-editor" id="purchaseOptionEditor"></div>
               <button class="button secondary small" type="button" id="addPurchaseOption">新增細項</button>
-            </div>
-            <label>商品短描述 <textarea name="description" required placeholder="會出現在商品卡片上。"></textarea></label>
-            <label>商品完整描述 <textarea name="detailDescription" placeholder="會出現在商品詳情頁的商品描述分頁。"></textarea></label>
-            <label>送貨及付款方式 <textarea name="shippingInfo" placeholder="例如：下單後聯絡 Line 官方確認付款與寄送。"></textarea></label>
-            <label>顧客評價 <textarea name="reviewInfo" placeholder="目前可以先寫：評價區準備中。"></textarea></label>
-            <label>購買連結 <input name="link" type="url" placeholder="https://..." /></label>
-            <label>排序 <input name="sort" type="number" value="999" /></label>
-            <input class="hidden" name="images" type="file" accept="image/*" />
-            <button class="button secondary" type="button" id="addImage">新增照片</button>
-            <p class="field-note">每按一次「新增照片」可以再補一張。照片會保留在下方縮圖區，可點縮圖切換預覽，也可按右上角 × 移除。</p>
-            <div class="image-picked" id="pickedImages"></div>
-            <div class="image-controls">
-              <label>圖片水平位置 <input name="imageX" type="range" min="0" max="100" value="50" /></label>
-              <label>圖片垂直位置 <input name="imageY" type="range" min="0" max="100" value="50" /></label>
-              <input class="hidden" name="imageScale" type="range" min="100" max="180" value="100" />
-            </div>
-            <div class="save-actions">
-              <button class="button secondary" type="submit" data-save-status="草稿">儲存草稿</button>
-              <button class="button" type="submit" data-save-status="上架">正式上架</button>
-            </div>
-            <p class="message" id="message"></p>
+            </fieldset>
+            <fieldset class="editor-group">
+              <legend>04 商品詳情分頁</legend>
+              <label>商品完整描述 <textarea name="detailDescription" placeholder="商品描述分頁"></textarea></label>
+              <label>送貨及付款方式 <textarea name="shippingInfo" placeholder="送貨及付款方式分頁"></textarea></label>
+              <label>顧客評價 <textarea name="reviewInfo" placeholder="顧客評價分頁"></textarea></label>
+              <label>其他購買連結（選填） <input name="link" type="url" placeholder="https://..." /></label>
+            </fieldset>
+            <div class="save-actions"><button class="button" type="submit">儲存商品</button></div>
+            <p class="message" id="message" role="status" aria-live="polite">尚未儲存</p>
           </form>
 
           <div class="preview-stack">
+            <nav class="preview-switch" aria-label="前台預覽切換">
+              <button class="button secondary small is-active" type="button" data-preview-mode="card" aria-pressed="true">商品卡片</button>
+              <button class="button secondary small" type="button" data-preview-mode="detail" aria-pressed="false">商品詳情</button>
+            </nav>
             <div class="preview-card">
-              <h3>商品卡片預覽</h3>
+              <h3>前台商品卡片</h3><p class="field-note">與前台相同的封面、狀態、描述與價格。</p>
               <article class="product-card" id="cardPreview"></article>
             </div>
-            <div class="detail-panel" id="detailPreview"></div>
+            <div class="detail-preview-wrap hidden"><h3>前台商品詳情</h3><div class="detail-panel" id="detailPreview"></div></div>
             <div class="preview-save-row">
-              <button class="button secondary" type="submit" form="productForm" data-save-status="草稿">儲存草稿</button>
-              <button class="button" type="submit" form="productForm" data-save-status="上架">正式上架</button>
+              <button class="button" type="submit" form="productForm">儲存商品</button>
               <p class="message save-status-pill" id="previewMessage">尚未儲存</p>
             </div>
           </div>
         </div>
-      </section>
-
-      <section class="product-section" id="products">
-        <p class="section-kicker">前台目前可見商品</p>
-        <div class="product-grid" id="productGrid"></div>
-      </section>
-
-      <section class="list-panel">
-        <h2>目前商品</h2>
-        <div class="list" id="list"></div>
       </section>
 
       <section class="showcase-admin" id="wishShowcaseAdmin">
@@ -1067,6 +1160,23 @@
         </div>
         <div class="showcase-list" id="showcaseList"></div>
       </section>
+      <section class="shipping-admin" id="shippingAdmin">
+        <div class="shipping-admin-head">
+          <div>
+            <p class="section-kicker">結帳與物流</p>
+            <h2>配送方式與運費</h2>
+          </div>
+          <p>關閉後，前台不會顯示該配送方式。運費可填 0 元。</p>
+        </div>
+        <form id="shippingSettingsForm">
+          <div class="shipping-settings-list" id="shippingSettingsList"></div>
+          <div class="shipping-save-row" id="shippingSaveRow">
+            <button class="button" id="shippingSaveButton" type="submit">儲存配送設定</button>
+            <p class="message" id="shippingSettingsMessage" role="status" aria-live="polite">正在讀取設定...</p>
+          </div>
+        </form>
+      </section>
+
     </main>
 
     <script>
@@ -1117,6 +1227,8 @@
       let dragState = null;
       let editingProductId = "";
       let currentProducts = [];
+      let activePreviewTab = "detailDescription";
+      const isLocalPreview = ["localhost", "127.0.0.1"].includes(location.hostname);
       let currentShowcases = [];
       let editingShowcaseId = "";
       let editingShowcaseCreatedAt = "";
@@ -1368,16 +1480,17 @@
         return min === max ? formatCompactMoney(min) : `${formatCompactMoney(min)}~${formatCompactMoney(max)}`;
       }
 
+      function productStatus(status) {
+        if (["現貨", "補貨中", "售完"].includes(status)) return status;
+        return status === "上架" || !status ? "現貨" : "補貨中";
+      }
+
       function statusClass(status) {
-        if (status === "上架") return "";
-        if (status === "草稿") return "is-draft";
-        return "is-hidden";
+        return status === "售完" ? "is-hidden" : status === "補貨中" ? "is-draft" : "";
       }
 
       function statusHelpText(status) {
-        if (status === "上架") return "目前顧客可以在前台看到這個商品。";
-        if (status === "草稿") return "草稿預覽中，顧客目前看不到。";
-        return "此狀態不會顯示在前台。";
+        return status === "售完" ? "前台封面淡灰，顧客無法點入。" : status === "補貨中" ? "前台顯示補貨中，顧客可查看及購買。" : "前台顯示現貨，顧客可查看及購買。";
       }
 
       function previewPurchaseRows(options, fallbackName, fallbackPrice) {
@@ -1400,8 +1513,8 @@
                 <span>${escapeHtml(item.name)}</span>
                 <small>${escapeHtml(formatCompactMoney(item.price))}</small>
               </button>
-              <div class="option-qty"><button type="button">−</button><span>1</span><button type="button">+</button></div>
-              <strong class="purchase-subtotal">小計 ${escapeHtml(formatCompactMoney(item.price))}</strong>
+              <div class="option-qty"><button type="button" disabled>−</button><span>0</span><button type="button" disabled>+</button></div>
+              <strong class="purchase-subtotal">小計 NT$0</strong>
             </div>
             ${item.optionGroups?.length ? `
               <div class="variant-options">
@@ -1434,7 +1547,7 @@
 
         return {
           rowsHtml,
-          total: rows.reduce((sum, item) => sum + Number(item.price || 0), 0),
+          total: 0,
         };
       }
 
@@ -1589,7 +1702,7 @@
         location.reload();
       });
 
-      document.querySelector("#jumpProducts").addEventListener("click", () => {
+      document.querySelector("#jumpProducts")?.addEventListener("click", () => {
         document.querySelector("#products").scrollIntoView({ behavior: "smooth" });
       });
 
@@ -1624,6 +1737,28 @@
         }
         updatePreview();
         setSaveMessage("已修改，尚未儲存。");
+      });
+
+      function setPreviewMode(mode) {
+        document.querySelector(".preview-card").classList.toggle("hidden", mode !== "card");
+        document.querySelector(".detail-preview-wrap").classList.toggle("hidden", mode !== "detail");
+        document.querySelectorAll("[data-preview-mode]").forEach((button) => {
+          const active = button.dataset.previewMode === mode;
+          button.classList.toggle("is-active", active);
+          button.setAttribute("aria-pressed", String(active));
+        });
+        document.querySelector(".preview-stack").scrollTop = 0;
+      }
+      document.querySelectorAll("[data-preview-mode]").forEach((button) => {
+        button.addEventListener("click", () => setPreviewMode(button.dataset.previewMode));
+      });
+      productForm.addEventListener("focusin", (event) => {
+        const field = event.target.name;
+        if (["detailDescription", "shippingInfo", "reviewInfo"].includes(field)) {
+          activePreviewTab = field;
+          setPreviewMode("detail");
+          updatePreview();
+        }
       });
 
       addPurchaseOption.addEventListener("click", () => {
@@ -1726,7 +1861,7 @@
           price: formatPrice(data.get("price")),
           priceLabel: formatPriceRange(purchaseOptions, data.get("price")),
           purchaseOptions,
-          status: data.get("status") || "草稿",
+          status: productStatus(data.get("status")),
           description: data.get("description") || "這裡會顯示商品短描述。",
           detailDescription: data.get("detailDescription") || data.get("description") || "商品完整介紹會顯示在這裡。",
           shippingInfo: data.get("shippingInfo") || "MUWA 為小型個人工作室，需溝通設計的商品，請下單後主動聯絡 Line 官方。",
@@ -1764,16 +1899,14 @@
         const state = getFormState();
         const image = previewImages[activePreviewImage]?.src || "";
         const purchasePreview = previewPurchaseRows(state.purchaseOptions, state.name, state.price);
+        const cover = previewImages[0]?.src || "";
+        cardPreview.classList.toggle("is-sold-out", state.status === "售完");
         cardPreview.innerHTML = `
-          <span class="drag-hint">${image ? "在圖片上按住拖曳，就能調整卡片裁切位置" : "選擇圖片後，這裡會直接顯示預覽"}</span>
-          <div class="product-visual drag-target" data-drag-preview>${imageHtml(image, state.name, state.imagePosition, state.imageScale)}</div>
-          <div class="product-copy">
-            <span class="category">${escapeHtml(state.category)}</span>
-            <h3 contenteditable="true" data-bind="name">${escapeHtml(state.name)}</h3>
-            <p contenteditable="true" data-bind="description">${escapeHtml(state.description)}</p>
-            <strong class="price-pill">${escapeHtml(state.priceLabel)}</strong>
-          </div>
-        `;
+          <div class="product-visual"><span class="product-category-badge">${escapeHtml(state.category)}</span>${imageHtml(cover, state.name, state.imagePosition, state.imageScale)}</div>
+          <div class="product-copy"><div class="product-copy-main">
+            <small class="product-status" data-status="${state.status}">${state.status}</small>
+            <h3>${escapeHtml(state.name)}</h3><span>${escapeHtml(state.description)}</span>
+          </div><div class="product-meta"><strong>${escapeHtml(state.priceLabel)}</strong><span class="product-detail-pill">${state.status === "售完" ? "已售完" : "查看詳情"}</span></div></div>`;
         detailPreview.innerHTML = `
           <div class="preview-state-bar">
             <span class="status-pill ${statusClass(state.status)}">${escapeHtml(state.status)}</span>
@@ -1793,27 +1926,31 @@
               `).join("")}
             </div>
           </div>
-          <div>
+          <div class="detail-info">
             <p class="section-kicker">${escapeHtml(state.category)}</p>
-            <h2 contenteditable="true" data-bind="name">${escapeHtml(state.name)}</h2>
-            <div class="rich-text-preview" contenteditable="true" data-bind="description">${richTextHtml(state.description)}</div>
-            <strong class="price-pill">${escapeHtml(state.priceLabel)}</strong>
+            <small class="product-status" data-status="${state.status}">${state.status}</small>
+            <h2>${escapeHtml(state.name)}</h2>
+            <div class="rich-text-preview">${richTextHtml(state.description)}</div>
+            <strong class="detail-price">${escapeHtml(state.priceLabel)}</strong>
             <div class="purchase-options">${purchasePreview.rowsHtml}</div>
             <div class="purchase-total"><span>共計</span><strong>${escapeHtml(formatCompactMoney(purchasePreview.total))}</strong></div>
-            <button class="button" type="button">加到購物車</button>
+            <div class="detail-actions"><button class="button secondary" type="button" disabled>加到購物車</button><button class="button" type="button" disabled>直接結帳</button></div>
           </div>
           <div class="tabs">
-            <button class="is-active" type="button">商品描述</button>
-            <button type="button">送貨及付款方式</button>
-            <button type="button">顧客評價</button>
+            <button class="is-active" type="button" data-preview-tab="detailDescription">商品描述</button>
+            <button type="button" data-preview-tab="shippingInfo">送貨及付款方式</button>
+            <button type="button" data-preview-tab="reviewInfo">顧客評價</button>
           </div>
-          <div class="tab-panel" contenteditable="true" data-bind="detailDescription">${richTextHtml(state.detailDescription)}</div>
-          <div class="tab-panel" contenteditable="true" data-bind="shippingInfo">${richTextHtml(state.shippingInfo)}</div>
-          <div class="tab-panel" contenteditable="true" data-bind="reviewInfo">${richTextHtml(state.reviewInfo)}</div>
+          <div class="tab-panel" data-preview-tab-panel>${richTextHtml(state[activePreviewTab])}</div>
         `;
+        detailPreview.querySelectorAll("[data-preview-tab]").forEach((tab) => {
+          tab.classList.toggle("is-active", tab.dataset.previewTab === activePreviewTab);
+        });
       }
 
       detailPreview.addEventListener("click", (event) => {
+        const tab = event.target.closest("[data-preview-tab]");
+        if (tab) { activePreviewTab = tab.dataset.previewTab; updatePreview(); return; }
         const button = event.target.closest("[data-preview-image]");
         if (!button) return;
         activePreviewImage = Number(button.dataset.previewImage);
@@ -2021,10 +2158,25 @@
           .deleteWishShowcase(deleteButton.dataset.showcaseDelete, adminKey);
       });
 
+      function loadLocalPreviewProducts() {
+        if (!isLocalPreview) return;
+        const configScript = document.createElement("script");
+        configScript.src = "./config.js";
+        configScript.onload = () => {
+          const feed = document.createElement("script");
+          const callback = `muwaAdminPreview_${Date.now()}`;
+          window[callback] = (payload) => { renderProducts(payload.products || []); delete window[callback]; feed.remove(); };
+          feed.src = `${window.MUWA_CONFIG.productFeedUrl}?action=products&callback=${callback}`;
+          feed.onerror = () => { productGrid.innerHTML = "<p>讀取商品失敗，請重新整理。</p>"; delete window[callback]; feed.remove(); };
+          document.body.appendChild(feed);
+        };
+        document.body.appendChild(configScript);
+      }
+
       function loadProducts() {
         if (!isGoogleRuntime()) {
-          list.innerHTML = "<p>這裡是本機預覽。正式新增商品時，請用 Google Apps Script 部署後的 Web App URL 開啟。</p>";
-          productGrid.innerHTML = "";
+          list.innerHTML = "<p>本機預覽：儲存與刪除正式商品需至正式後台操作。</p>";
+          loadLocalPreviewProducts();
           return;
         }
 
@@ -2044,21 +2196,20 @@
           productGrid.innerHTML = "";
           return;
         }
-        const publishedProducts = products.filter((item) => item.status === "上架");
+        const publishedProducts = products.filter((item) => ["上架", "現貨", "補貨中", "售完"].includes(item.status));
         productGrid.innerHTML = publishedProducts.length
           ? publishedProducts.map((item) => renderProductCard(item)).join("")
-          : "<div class=\"empty-products\"><h3>目前沒有正式上架商品</h3><p>草稿不會顯示在前台，確認滿意後再按「正式上架」。</p></div>";
+          : "<div class=\"empty-products\"><h3>目前沒有正式上架商品</h3><p>按「新增商品」開始，儲存商品後就會顯示在前台。</p></div>";
         list.innerHTML = products.map((item) => `
           <article class="item">
             ${item.image ? `<img src="${item.image}" alt="">` : `<div class="thumb">MUWA</div>`}
             <div>
-              <p><span class="status-pill ${statusClass(item.status)}">${escapeHtml(item.status || "草稿")}</span> ${escapeHtml(item.category)} / ${formatPriceRange(parsePurchaseOptions(item.purchaseOptions, item.name), item.price)}</p>
-              <h3>${item.name}</h3>
-              <p>${item.description}</p>
+              <p><span class="status-pill ${statusClass(productStatus(item.status))}">${escapeHtml(["草稿", "下架"].includes(item.status) ? `${productStatus(item.status)}（舊資料未公開）` : productStatus(item.status))}</span> ${escapeHtml(item.category)} / ${escapeHtml(formatPriceRange(parsePurchaseOptions(item.purchaseOptions, item.name), item.price))}</p>
+              <h3>${escapeHtml(item.name)}</h3>
+              <p>${escapeHtml(item.description)}</p>
             </div>
             <div class="item-actions">
               <button class="button small" type="button" data-edit-id="${item.id}">編輯 / 預覽</button>
-              ${item.status === "上架" ? "" : `<button class="button small" type="button" data-publish-id="${item.id}">正式上架</button>`}
               <button class="button blue small" type="button" data-delete-id="${item.id}">刪除</button>
             </div>
           </article>
@@ -2066,20 +2217,28 @@
       }
 
       function renderProductCard(item) {
-        const size = `${Math.round(Number(item.imageScale || 1) * 100)}%`;
+        const status = productStatus(item.status);
+        const cover = item.images?.[0] || item.image || "";
         const priceLabel = formatPriceRange(parsePurchaseOptions(item.purchaseOptions, item.name), item.price);
         return `
-          <article class="product-card">
-            <div class="product-visual">${item.image ? `<div class="image-frame" role="img" aria-label="${escapeHtml(item.name)}" style="--image-url:url('${item.image}'); --image-position:${escapeHtml(item.imagePosition || "50% 50%")}; --image-size:${size} auto"></div>` : `<div class="product-placeholder">MUWA</div>`}</div>
-            <div class="product-copy">
-              <span class="category">${escapeHtml(item.category || "全部")}</span>
-              <h3>${escapeHtml(item.name)}</h3>
-              <p>${escapeHtml(item.description)}</p>
-              <strong class="price-pill">${escapeHtml(priceLabel)}</strong>
-            </div>
-          </article>
-        `;
+          <article class="product-card ${status === "售完" ? "is-sold-out" : ""}">
+            <button class="product-open" type="button" data-edit-id="${escapeHtml(item.id)}" aria-label="編輯 ${escapeHtml(item.name)}">
+              <div class="product-visual">
+                <span class="product-category-badge">${escapeHtml(item.category || "全部")}</span>
+                ${imageHtml(cover, item.name, item.imagePosition || "50% 50%", item.imageScale || "1")}
+              </div>
+              <div class="product-copy"><div class="product-copy-main">
+                <small class="product-status" data-status="${status}">${status}</small>
+                <h3>${escapeHtml(item.name)}</h3><span>${escapeHtml(item.description)}</span>
+              </div><div class="product-meta"><strong>${escapeHtml(priceLabel)}</strong><span class="product-detail-pill">編輯商品</span></div></div>
+            </button>
+          </article>`;
       }
+
+      productGrid.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-edit-id]");
+        if (button) editProduct(button.dataset.editId);
+      });
 
       function buildProductPayload(statusOverride = "") {
         const data = new FormData(productForm);
@@ -2093,7 +2252,7 @@
           category: data.get("category"),
           price: data.get("price"),
           purchaseOptions: data.get("purchaseOptions"),
-          status: statusOverride || data.get("status") || "草稿",
+          status: productStatus(statusOverride || data.get("status")),
           sort: data.get("sort"),
           description: data.get("description"),
           detailDescription: data.get("detailDescription"),
@@ -2109,16 +2268,23 @@
       }
 
       function saveProductPayload(payload, successMessage = "") {
+        document.querySelectorAll('[type="submit"][form="productForm"], #productForm [type="submit"]').forEach((button) => { button.disabled = true; });
+        const finishSave = () => document.querySelectorAll('[type="submit"][form="productForm"], #productForm [type="submit"]').forEach((button) => { button.disabled = false; });
         google.script.run
-          .withSuccessHandler(() => {
-            productForm.status.value = payload.status || "草稿";
+          .withSuccessHandler((result) => {
+            finishSave();
+            editingProductId = result.id || payload.id;
+            previewImages = (result.imageUrls || payload.existingImages || []).map((url) => ({ src: url, url, name: "已儲存照片", existing: true }));
+            renderPickedImages();
+            productForm.status.value = productStatus(payload.status);
             const [imageX = 50, imageY = 50] = String(payload.imagePosition || "50% 50%").split(" ");
             const imageScale = Math.round(Number(payload.imageScale || 1) * 100) || 100;
-            const statusText = payload.status === "上架" ? "已正式上架，前台可見。" : "已儲存草稿，前台不會顯示。";
+            const statusText = `商品已儲存，前台狀態：${payload.status}。`;
             setSaveMessage(successMessage || `${statusText} 已儲存圖片位置：水平 ${imageX} / 垂直 ${imageY} / 縮放 ${imageScale}%。`, "is-success");
             loadProducts();
           })
           .withFailureHandler((error) => {
+            finishSave();
             setSaveMessage(`儲存失敗：${error.message}`, "is-error");
           })
           .saveProduct(payload);
@@ -2133,7 +2299,7 @@
 
         const statusOverride = event.submitter?.dataset?.saveStatus || "";
         if (statusOverride) productForm.status.value = statusOverride;
-        setSaveMessage(statusOverride === "上架" ? "正在正式上架，請稍等..." : "正在儲存草稿，請稍等...", "is-saving");
+        setSaveMessage("正在儲存商品，請稍等...", "is-saving");
         const payload = buildProductPayload(statusOverride);
 
         saveProductPayload(payload);
@@ -2189,40 +2355,6 @@
           return;
         }
 
-        const publishButton = event.target.closest("[data-publish-id]");
-        if (publishButton) {
-          if (!isGoogleRuntime()) {
-            setSaveMessage("本機預覽不能正式上架。請到正式 Apps Script 後台操作。", "is-error");
-            return;
-          }
-          const item = currentProducts.find((product) => String(product.id) === String(publishButton.dataset.publishId));
-          if (!item) return;
-          publishButton.disabled = true;
-          setSaveMessage(`正在正式上架：${item.name}`, "is-saving");
-          saveProductPayload({
-            id: item.id,
-            adminUser,
-            adminKey,
-            name: item.name,
-            category: item.category,
-            price: item.price,
-            purchaseOptions: item.purchaseOptions,
-            status: "上架",
-            sort: item.sort || 999,
-            description: item.description,
-            detailDescription: item.detailDescription,
-            shippingInfo: item.shippingInfo,
-            reviewInfo: item.reviewInfo,
-            imagePosition: item.imagePosition || "50% 50%",
-            imageScale: item.imageScale || "1",
-            link: item.link,
-            existingImages: item.images && item.images.length ? item.images : item.image ? [item.image] : [],
-            imageNames: [],
-            imagesData: [],
-          }, `已正式上架：${item.name}。前台現在可以看到了。`);
-          return;
-        }
-
         const button = event.target.closest("[data-delete-id]");
         if (!button || !isGoogleRuntime()) return;
         button.disabled = true;
@@ -2237,10 +2369,11 @@
 
       function startNewProduct() {
         editingProductId = "";
+        document.querySelector("#productEditorTitle").textContent = "新增商品";
         productForm.reset();
         productForm.category.value = "全部";
         productForm.sort.value = "999";
-        productForm.status.value = "草稿";
+        productForm.status.value = "現貨";
           productForm.imageX.value = "50";
           productForm.imageY.value = "50";
           productForm.imageScale.value = "100";
@@ -2248,7 +2381,7 @@
         previewImages = [];
         activePreviewImage = 0;
         editorPanel.classList.remove("hidden");
-        setSaveMessage("新商品預設為草稿，儲存後前台不會顯示。");
+        setSaveMessage("新商品尚未儲存，前台不會顯示。儲存後會顯示所選狀態。");
         renderPickedImages();
         updatePreview();
         editorPanel.scrollIntoView({ behavior: "smooth" });
@@ -2258,11 +2391,12 @@
         const item = currentProducts.find((product) => String(product.id) === String(id));
         if (!item) return;
         editingProductId = item.id;
+        document.querySelector("#productEditorTitle").textContent = `編輯：${item.name}`;
         productForm.name.value = item.name || "";
         productForm.category.value = item.category || "全部";
         productForm.price.value = String(item.price || "").replace("NT$", "").trim();
         renderPurchaseOptionEditor(parsePurchaseOptions(item.purchaseOptions, item.name));
-        productForm.status.value = item.status || "上架";
+        productForm.status.value = productStatus(item.status);
         productForm.sort.value = item.sort || "999";
         productForm.description.value = item.description || "";
         productForm.detailDescription.value = item.detailDescription || "";
@@ -2289,6 +2423,10 @@
       renderPickedImages();
       updatePreview();
       resetShowcaseForm();
+      if (isLocalPreview && new URLSearchParams(location.search).get("preview") === "1") {
+        document.querySelector("#localPreviewNote").classList.remove("hidden");
+        showAdmin();
+      }
     </script>
   </body>
 </html>

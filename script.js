@@ -48,7 +48,6 @@ const DEFAULT_SHIPPING_SETTINGS = [
   { id: "hilife", label: "萊爾富店到店", type: "store", chain: "萊爾富", enabled: true, fee: 60, sort: 4 },
 ];
 let shippingSettings = DEFAULT_SHIPPING_SETTINGS.map((item) => ({ ...item }));
-const FREE_SHIPPING_PROMO_SESSION_KEY = "muwa-7eleven-free-shipping-promo-seen";
 
 const STORE_LOOKUP_LINKS = {
   "7-11": "https://emap.pcsc.com.tw/",
@@ -56,7 +55,11 @@ const STORE_LOOKUP_LINKS = {
   "萊爾富": "https://www.hilife.com.tw/filter",
 };
 
-const PRODUCT_CACHE_KEY = "muwa-products-cache-v1";
+const PRODUCT_CACHE_KEY = "muwa-products-cache-v2";
+
+function productStatus(product) {
+  return ["補貨中", "售完", "現貨"].includes(product.status) ? product.status : "現貨";
+}
 
 function normalizePurchaseOption(item) {
   const optionGroups = Array.isArray(item?.optionGroups)
@@ -236,8 +239,9 @@ function writeCachedProducts(products) {
 function renderProductList(products) {
   if (!productGrid) return;
 
-  productStore = products.map((product) => ({
+  productStore = products.filter((product) => !["草稿", "下架"].includes(product.status)).map((product) => ({
     ...product,
+    status: productStatus(product),
     images: getProductImages(product),
     purchaseOptions: getPurchaseOptions(product),
     price: formatPrice(product.price),
@@ -261,20 +265,21 @@ function renderProductList(products) {
       const price = priceLabel ? `<strong>${escapeHtml(priceLabel)}</strong>` : "";
 
       return `
-        <article class="product-card" data-product-category="${escapeHtml(product.category || "全部")}">
-          <button class="product-open" type="button" data-product-index="${index}" aria-label="查看 ${escapeHtml(product.name)} 商品詳情">
+        <article class="product-card ${product.status === "售完" ? "is-sold-out" : ""}" data-product-category="${escapeHtml(product.category || "全部")}">
+          <button class="product-open" type="button" data-product-index="${index}" ${product.status === "售完" ? 'disabled aria-disabled="true"' : ""} aria-label="${escapeHtml(product.name)}，${product.status}${product.status === "售完" ? "" : "，查看商品詳情"}">
             <div class="product-visual ${product.images[0] ? "has-image" : "visual-bowl"}" aria-hidden="${product.images[0] ? "false" : "true"}">
               <span class="product-category-badge">${escapeHtml(product.category || "全部")}</span>
               ${image}
             </div>
             <div class="product-copy">
               <div class="product-copy-main">
+                <small class="product-status" data-status="${product.status}">${product.status}</small>
                 <h3>${escapeHtml(product.name)}</h3>
                 <span>${escapeHtml(product.description)}</span>
               </div>
               <div class="product-meta">
                 ${price}
-                <span class="product-detail-pill">查看詳情</span>
+                <span class="product-detail-pill">${product.status === "售完" ? "已售完" : "查看詳情"}</span>
               </div>
             </div>
           </button>
@@ -336,7 +341,7 @@ function loadProductFeed() {
 
   window[callbackName] = (payload) => {
     const products = Array.isArray(payload.products) ? payload.products : [];
-    if (products.length) writeCachedProducts(products);
+    writeCachedProducts(products);
     renderProductList(products);
     delete window[callbackName];
     script.remove();
@@ -422,13 +427,7 @@ function loadShippingSettings() {
     let settings = Array.isArray(payload.settings)
       ? payload.settings.map(normalizeShippingSetting).filter((item) => item.id && item.enabled)
       : [];
-    const previewFreeShipping = ["127.0.0.1", "localhost"].includes(window.location.hostname)
-      && new URLSearchParams(window.location.search).get("shippingPromo") === "1";
-    if (previewFreeShipping) {
-      settings = settings.map((item) => item.id === "7-11" ? { ...item, fee: 0 } : item);
-    }
     shippingSettings = settings.sort((a, b) => a.sort - b.sort);
-    maybeShowFreeShippingPromo();
     const modal = document.querySelector("#order-checkout");
     if (modal) {
       renderShippingChoices(modal);
@@ -443,65 +442,6 @@ function loadShippingSettings() {
   };
   script.src = `${feedUrl}${separator}action=shippingSettings&callback=${callbackName}`;
   document.body.appendChild(script);
-}
-
-function ensureFreeShippingPromo() {
-  let modal = document.querySelector("#free-shipping-promo");
-  if (modal) return modal;
-
-  modal = document.createElement("section");
-  modal.id = "free-shipping-promo";
-  modal.className = "free-shipping-promo";
-  modal.setAttribute("aria-hidden", "true");
-  modal.innerHTML = `
-    <button class="free-shipping-promo-backdrop" type="button" data-close-free-shipping aria-label="關閉免運優惠"></button>
-    <article class="free-shipping-promo-panel" role="dialog" aria-modal="true" aria-labelledby="free-shipping-promo-title">
-      <button class="free-shipping-promo-close" type="button" data-close-free-shipping aria-label="關閉">×</button>
-      <div class="free-shipping-promo-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24">
-          <path d="M10 17h4V5H2v12h3m5 0H8m9 0h-3m3 0h2m-2 0V9h3l2 3v5h-3m-9 0a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm11 0a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z" />
-        </svg>
-        <strong>免運</strong>
-      </div>
-      <div>
-        <p class="section-kicker">MUWA 限時優惠</p>
-        <h2 id="free-shipping-promo-title">7-11 限時免運優惠，正式開跑！</h2>
-        <p>結帳選擇 7-11 店到店，運費自動以 NT$0 計算。</p>
-      </div>
-      <a class="button free-shipping-promo-action" href="#products" data-close-free-shipping>前往商品</a>
-    </article>
-  `;
-  modal.addEventListener("click", (event) => {
-    if (event.target.closest("[data-close-free-shipping]")) closeFreeShippingPromo();
-  });
-  document.body.appendChild(modal);
-  return modal;
-}
-
-function maybeShowFreeShippingPromo() {
-  const sevenEleven = shippingSettings.find((item) => item.id === "7-11");
-  if (!sevenEleven || Number(sevenEleven.fee) !== 0) return;
-  try {
-    if (sessionStorage.getItem(FREE_SHIPPING_PROMO_SESSION_KEY) === "1") return;
-  } catch (_error) {
-    // Some privacy modes block session storage; the offer can still be displayed.
-  }
-
-  const modal = ensureFreeShippingPromo();
-  modal.classList.add("is-open");
-  modal.setAttribute("aria-hidden", "false");
-  try {
-    sessionStorage.setItem(FREE_SHIPPING_PROMO_SESSION_KEY, "1");
-  } catch (_error) {
-    // Closing the dialog still works when storage is unavailable.
-  }
-}
-
-function closeFreeShippingPromo() {
-  const modal = document.querySelector("#free-shipping-promo");
-  if (!modal) return;
-  modal.classList.remove("is-open");
-  modal.setAttribute("aria-hidden", "true");
 }
 
 function ensureProductModal() {
@@ -522,6 +462,7 @@ function ensureProductModal() {
       </div>
       <div class="detail-info">
         <p class="section-kicker detail-category"></p>
+        <small class="product-status detail-status"></small>
         <h2 id="detail-title"></h2>
         <div class="detail-description"></div>
         <strong class="detail-price"></strong>
@@ -530,6 +471,7 @@ function ensureProductModal() {
         <p class="cart-message" data-cart-message aria-live="polite"></p>
         <div class="detail-actions">
           <button class="button primary detail-cart" type="button" data-add-cart>加到購物車</button>
+          <button class="button primary" type="button" data-detail-checkout>直接結帳</button>
         </div>
       </div>
       <div class="detail-tabs">
@@ -715,7 +657,7 @@ function ensureLineModal() {
 
 function openProductDetail(productIndex) {
   const product = productStore[Number(productIndex)];
-  if (!product) return;
+  if (!product || product.status === "售完") return;
 
   activeProduct = product;
   activeImageIndex = 0;
@@ -746,6 +688,8 @@ function renderProductDetail() {
   const buyLink = product.link || `mailto:muwa.to.sales@gmail.com?subject=${encodeURIComponent(`想詢問 ${product.name}`)}`;
 
   modal.querySelector(".detail-category").textContent = product.category || "全部";
+  modal.querySelector(".detail-status").textContent = product.status;
+  modal.querySelector(".detail-status").dataset.status = product.status;
   modal.querySelector("#detail-title").textContent = product.name || "MUWA 商品";
   modal.querySelector(".detail-description").innerHTML = richTextHtml(product.description || "商品介紹準備中。");
   modal.querySelector(".detail-price").textContent = formatPriceRange(product.purchaseOptions, product.price) || "價格請私訊";
@@ -909,7 +853,7 @@ function getOrderEndpoint() {
 }
 
 function addActiveProductToCart(mode = "add") {
-  if (!activeProduct) return 0;
+  if (!activeProduct || activeProduct.status === "售完") return 0;
   const rows = Array.from(document.querySelectorAll("#product-detail [data-option-index]"));
   let addedQty = 0;
   rows.forEach((row) => {
@@ -1172,6 +1116,7 @@ function updateOrderTotal() {
 function buildOrderPayload(form) {
   const data = new FormData(form);
   const items = getSelectedCartItems().map((item) => ({
+    productKey: item.productKey,
     productName: item.productName,
     optionName: item.optionName,
     price: Number(item.price || 0),
@@ -1363,6 +1308,9 @@ document.addEventListener("click", (event) => {
 
   const addCartButton = event.target.closest("[data-add-cart]");
   if (addCartButton) addActiveProductToCart();
+
+  const directCheckoutButton = event.target.closest("[data-detail-checkout]");
+  if (directCheckoutButton && addActiveProductToCart() > 0) openOrderCheckout();
 
   const closeCartButton = event.target.closest("[data-close-cart]");
   if (closeCartButton) closeCart();
